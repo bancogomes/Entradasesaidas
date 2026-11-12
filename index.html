@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Controle Financeiro</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        slate: { 850: '#151e2e', 900: '#0f172a' },
+                        emerald: { 500: '#10b981', 600: '#059669' },
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- CryptoJS (Criptografia AES) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <!-- html2pdf (Exportação PDF) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        .pdf-mode .no-print { display: none !important; }
+        .pdf-mode { background-color: #0f172a !important; color: #f1f5f9 !important; padding: 20px; }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen font-sans">
+
+    <!-- TELA DE LOGIN / SENHA -->
+    <div id="auth-screen" class="flex items-center justify-center min-h-screen">
+        <div class="bg-slate-800 p-8 rounded-xl shadow-2xl w-96 max-w-[90%] text-center border border-slate-700">
+            <h1 class="text-2xl font-bold mb-2 text-emerald-500">
+                <i class="fa-solid fa-vault mr-2"></i>Acesso Seguro
+            </h1>
+            <p id="auth-message" class="text-slate-400 mb-6 text-sm">Insira sua senha para acessar ou criar sua base de dados.</p>
+            
+            <input type="password" id="password-input" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-slate-100 mb-4 focus:outline-none focus:border-emerald-500" placeholder="Sua senha secreta">
+            
+            <button onclick="authenticate()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-lg transition-colors">
+                Entrar
+            </button>
+            <p id="auth-error" class="text-rose-500 text-sm mt-4 hidden">Senha incorreta!</p>
+        </div>
+    </div>
+
+    <!-- TELA PRINCIPAL DO APLICATIVO -->
+    <div id="app-screen" class="hidden max-w-6xl mx-auto p-4 md:p-6">
+        
+        <!-- Cabeçalho -->
+        <header class="flex justify-between items-center mb-8 bg-slate-800 p-4 rounded-xl border border-slate-700">
+            <h1 class="text-xl md:text-2xl font-bold text-emerald-500">
+                <i class="fa-solid fa-wallet mr-2"></i>Gestão Financeira
+            </h1>
+            <button onclick="logout()" class="text-slate-400 hover:text-rose-500 transition-colors">
+                <i class="fa-solid fa-right-from-bracket mr-1"></i>Sair
+            </button>
+        </header>
+
+        <!-- Navegação de Mês -->
+        <div class="bg-slate-800 rounded-xl p-4 mb-6 border border-slate-700 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-4">
+                <button onclick="changeMonth(-1)" class="bg-slate-700 hover:bg-slate-600 p-2 rounded-lg transition-colors"><i class="fa-solid fa-chevron-left"></i></button>
+                <h2 id="current-month-display" class="text-xl font-bold min-w-[150px] text-center capitalize">Janeiro 2026</h2>
+                <button onclick="changeMonth(1)" class="bg-slate-700 hover:bg-slate-600 p-2 rounded-lg transition-colors"><i class="fa-solid fa-chevron-right"></i></button>
+            </div>
+            
+            <div class="flex items-center gap-4">
+                <span id="month-status-badge" class="px-3 py-1 rounded-full text-sm font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">Aberto</span>
+                <button id="close-month-btn" onclick="closeMonth()" class="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg transition-colors text-sm font-semibold">
+                    <i class="fa-solid fa-lock mr-2"></i>Fechar Mês
+                </button>
+            </div>
+        </div>
+
+        <!-- Dashboard de Totais -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+            <div class="bg-slate-800 p-6 rounded-xl border border-slate-700">
+                <p class="text-slate-400 text-sm mb-1">Recebimentos</p>
+                <p id="total-incomes" class="text-2xl font-bold text-emerald-400">R$ 0,00</p>
+            </div>
+            <div class="bg-slate-800 p-6 rounded-xl border border-slate-700">
+                <p class="text-slate-400 text-sm mb-1">Gastos</p>
+                <p id="total-expenses" class="text-2xl font-bold text-rose-400">R$ 0,00</p>
+            </div>
+            <div class="bg-slate-800 p-6 rounded-xl border border-slate-700">
+                <p class="text-slate-400 text-sm mb-1">Saldo Atual</p>
+                <p id="total-balance" class="text-2xl font-bold">R$ 0,00</p>
+            </div>
+        </div>
+
+        <!-- Módulos de Entrada e Saída -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            
+            <!-- Recebimentos -->
+            <div id="export-incomes" class="bg-slate-800 rounded-xl p-6 border border-slate-700 relative">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-xl font-bold text-emerald-500"><i class="fa-solid fa-arrow-trend-up mr-2"></i>Recebimentos</h3>
+                    <button onclick="exportPDF('incomes')" class="no-print text-slate-400 hover:text-white transition-colors" title="Exportar para PDF">
+                        <i class="fa-solid fa-file-pdf text-xl"></i>
+                    </button>
+                </div>
+                
+                <form id="form-income" onsubmit="addTransaction(event, 'incomes')" class="no-print flex gap-2 mb-6">
+                    <input type="text" id="income-desc" required placeholder="Descrição" class="flex-1 bg-slate-900 border border-slate-700 rounded-lg p-2 text-slate-100 focus:outline-none focus:border-emerald-500">
+                    <input type="number" id="income-val" required step="0.01" min="0.01" placeholder="Valor" class="w-28 bg-slate-900 border border-slate-700 rounded-lg p-2 text-slate-100 focus:outline-none focus:border-emerald-500">
+                    <button type="submit" class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 rounded-lg transition-colors"><i class="fa-solid fa-plus"></i></button>
+                </form>
+
+                <ul id="list-incomes" class="space-y-2"></ul>
+            </div>
+
+            <!-- Gastos -->
+            <div id="export-expenses" class="bg-slate-800 rounded-xl p-6 border border-slate-700 relative">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-xl font-bold text-rose-500"><i class="fa-solid fa-arrow-trend-down mr-2"></i>Gastos</h3>
+                    <button onclick="exportPDF('expenses')" class="no-print text-slate-400 hover:text-white transition-colors" title="Exportar para PDF">
+                        <i class="fa-solid fa-file-pdf text-xl"></i>
+                    </button>
+                </div>
+                
+                <form id="form-expense" onsubmit="addTransaction(event, 'expenses')" class="no-print flex gap-2 mb-6">
+                    <input type="text" id="expense-desc" required placeholder="Descrição" class="flex-1 bg-slate-900 border border-slate-700 rounded-lg p-2 text-slate-100 focus:outline-none focus:border-rose-500">
+                    <input type="number" id="expense-val" required step="0.01" min="0.01" placeholder="Valor" class="w-28 bg-slate-900 border border-slate-700 rounded-lg p-2 text-slate-100 focus:outline-none focus:border-rose-500">
+                    <button type="submit" class="bg-rose-600 hover:bg-rose-500 text-white px-4 rounded-lg transition-colors"><i class="fa-solid fa-plus"></i></button>
+                </form>
+
+                <ul id="list-expenses" class="space-y-2"></ul>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        const STORAGE_KEY = 'bg_finances_data';
+        let userPassword = '';
+        let appData = {};
+        let currentMonthDate = new Date();
+
+        const formatBRL = (value) => {
+            return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+        };
+
+        const getMonthKey = (date) => {
+            return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+        };
+        const formatMonthDisplay = (date) => {
+            const formatter = new Intl.DateTimeFormat('pt-BR', { month: 'long', year: 'numeric' });
+            return formatter.format(date);
+        };
+
+        const encryptData = (data) => CryptoJS.AES.encrypt(JSON.stringify(data), userPassword).toString();
+        const decryptData = (ciphertext) => {
+            try {
+                const bytes = CryptoJS.AES.decrypt(ciphertext, userPassword);
+                return JSON.parse(bytes.toString(CryptoJS.enc.Utf8));
+            } catch (e) {
+                return null;
+            }
+        };
+
+        function authenticate() {
+            const input = document.getElementById('password-input').value;
+            if (!input) return;
+
+            const storedData = localStorage.getItem(STORAGE_KEY);
+            
+            if (storedData) {
+                userPassword = input;
+                const decrypted = decryptData(storedData);
+                if (decrypted) {
+                    appData = decrypted;
+                    loginSuccess();
+                } else {
+                    document.getElementById('auth-error').classList.remove('hidden');
+                    userPassword = '';
+                }
+            } else {
+                userPassword = input;
+                appData = {};
+                saveData();
+                loginSuccess();
+            }
+        }
+
+        function loginSuccess() {
+            document.getElementById('auth-screen').classList.add('hidden');
+            document.getElementById('app-screen').classList.remove('hidden');
+            document.getElementById('password-input').value = '';
+            document.getElementById('auth-error').classList.add('hidden');
+            checkAndInitMonth(getMonthKey(currentMonthDate));
+            updateUI();
+        }
+
+        function logout() {
+            userPassword = '';
+            appData = {};
+            document.getElementById('app-screen').classList.add('hidden');
+            document.getElementById('auth-screen').classList.remove('hidden');
+        }
+
+        function saveData() {
+            if (!userPassword) return;
+            localStorage.setItem(STORAGE_KEY, encryptData(appData));
+        }
+
+        function checkAndInitMonth(monthKey) {
+            if (!appData[monthKey]) {
+                appData[monthKey] = {
+                    status: 'open',
+                    incomes: [],
+                    expenses: []
+                };
+            }
+        }
+
+        function changeMonth(delta) {
+            currentMonthDate.setMonth(currentMonthDate.getMonth() + delta);
+            const key = getMonthKey(currentMonthDate);
+            checkAndInitMonth(key);
+            updateUI();
+        }
+
+        function closeMonth() {
+            if (confirm("Tem certeza que deseja fechar este mês? Você não poderá adicionar ou remover transações após fechar.")) {
+                const key = getMonthKey(currentMonthDate);
+                appData[key].status = 'closed';
+                saveData();
+                changeMonth(1);
+            }
+        }
+
+        function addTransaction(e, type) {
+            e.preventDefault();
+            const key = getMonthKey(currentMonthDate);
+            if (appData[key].status === 'closed') return;
+
+            const prefix = type === 'incomes' ? 'income' : 'expense';
+            const descInput = document.getElementById(`${prefix}-desc`);
+            const valInput = document.getElementById(`${prefix}-val`);
+
+            const transaction = {
+                id: Date.now().toString(),
+                desc: descInput.value,
+                value: parseFloat(valInput.value)
+            };
+
+            appData[key][type].push(transaction);
+            saveData();
+            
+            descInput.value = '';
+            valInput.value = '';
+            updateUI();
+        }
+
+        function removeTransaction(type, id) {
+            const key = getMonthKey(currentMonthDate);
+            if (appData[key].status === 'closed') return;
+
+            appData[key][type] = appData[key][type].filter(t => t.id !== id);
+            saveData();
+            updateUI();
+        }
+
+        function updateUI() {
+            const key = getMonthKey(currentMonthDate);
+            const monthData = appData[key];
+            const isClosed = monthData.status === 'closed';
+
+            document.getElementById('current-month-display').innerText = formatMonthDisplay(currentMonthDate);
+            
+            const badge = document.getElementById('month-status-badge');
+            const closeBtn = document.getElementById('close-month-btn');
+            
+            if (isClosed) {
+                badge.innerText = 'Fechado';
+                badge.className = 'px-3 py-1 rounded-full text-sm font-semibold bg-rose-500/20 text-rose-400 border border-rose-500/30';
+                closeBtn.classList.add('hidden');
+                document.getElementById('form-income').classList.add('hidden');
+                document.getElementById('form-expense').classList.add('hidden');
+            } else {
+                badge.innerText = 'Aberto';
+                badge.className = 'px-3 py-1 rounded-full text-sm font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
+                closeBtn.classList.remove('hidden');
+                document.getElementById('form-income').classList.remove('hidden');
+                document.getElementById('form-expense').classList.remove('hidden');
+            }
+
+            renderList('incomes', monthData.incomes, isClosed);
+            renderList('expenses', monthData.expenses, isClosed);
+
+            const totalInc = monthData.incomes.reduce((acc, curr) => acc + curr.value, 0);
+            const totalExp = monthData.expenses.reduce((acc, curr) => acc + curr.value, 0);
+            const balance = totalInc - totalExp;
+
+            document.getElementById('total-incomes').innerText = formatBRL(totalInc);
+            document.getElementById('total-expenses').innerText = formatBRL(totalExp);
+            
+            const balanceEl = document.getElementById('total-balance');
+            balanceEl.innerText = formatBRL(balance);
+            balanceEl.className = `text-2xl font-bold ${balance >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
+        }
+
+        function renderList(type, items, isClosed) {
+            const listEl = document.getElementById(`list-${type}`);
+            listEl.innerHTML = '';
+            
+            if (items.length === 0) {
+                listEl.innerHTML = '<li class="text-slate-500 text-sm text-center py-4">Nenhum registro.</li>';
+                return;
+            }
+
+            items.forEach(item => {
+                const li = document.createElement('li');
+                li.className = 'flex justify-between items-center bg-slate-900/50 p-3 rounded-lg border border-slate-700/50';
+                
+                const valueColor = type === 'incomes' ? 'text-emerald-400' : 'text-rose-400';
+                
+                li.innerHTML = `
+                    <span class="text-slate-200">${item.desc}</span>
+                    <div class="flex items-center gap-4">
+                        <span class="font-semibold ${valueColor}">${formatBRL(item.value)}</span>
+                        ${!isClosed ? `<button onclick="removeTransaction('${type}', '${item.id}')" class="no-print text-slate-500 hover:text-rose-500 transition-colors"><i class="fa-solid fa-trash"></i></button>` : ''}
+                    </div>
+                `;
+                listEl.appendChild(li);
+            });
+        }
+
+        function exportPDF(type) {
+            const elementId = type === 'incomes' ? 'export-incomes' : 'export-expenses';
+            const element = document.getElementById(elementId);
+            
+            element.classList.add('pdf-mode');
+            
+            const monthName = formatMonthDisplay(currentMonthDate).replace(' de ', '_');
+            const fileName = `Relatorio_${type === 'incomes' ? 'Recebimentos' : 'Gastos'}_${monthName}.pdf`;
+
+            const opt = {
+                margin:       10,
+                filename:     fileName,
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2, backgroundColor: '#0f172a' },
+                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+
+            html2pdf().set(opt).from(element).save().then(() => {
+                element.classList.remove('pdf-mode');
+            });
+        }
+
+        document.getElementById('password-input').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') authenticate();
+        });
+    </script>
+</body>
+</html>
