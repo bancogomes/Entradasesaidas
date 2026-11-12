@@ -20,17 +20,8 @@
     </script>
     <!-- CryptoJS (Criptografia AES) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
-    <!-- html2pdf (Exportação PDF) -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <!-- FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
-    <style>
-        .pdf-mode { background-color: #0f172a !important; color: #f1f5f9 !important; padding: 20px; font-family: sans-serif; }
-        .pdf-mode .no-print { display: none !important; }
-        .pdf-mode .pdf-footer { display: block !important; margin-top: 20px; padding-top: 10px; border-top: 1px solid #334155; font-weight: bold; font-size: 16px; text-align: right; }
-        .pdf-footer { display: none; }
-    </style>
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen font-sans">
 
@@ -52,7 +43,7 @@
     </div>
 
     <!-- TELA PRINCIPAL DO APLICATIVO -->
-    <div id="app-screen" class="hidden max-w-6xl mx-auto p-4 md:p-6">
+    <div id="app-screen" class="hidden max-w-6xl mx-auto p-4 md:p-6 pb-20">
         
         <!-- Cabeçalho -->
         <header class="flex justify-between items-center mb-8 bg-slate-800 p-4 rounded-xl border border-slate-700">
@@ -105,16 +96,16 @@
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             
             <!-- Recebimentos -->
-            <div id="export-incomes" class="bg-slate-800 rounded-xl p-6 border border-slate-700 relative flex flex-col justify-between">
+            <div class="bg-slate-800 rounded-xl p-6 border border-slate-700 flex flex-col justify-between">
                 <div>
                     <div class="flex justify-between items-center mb-6">
                         <h3 class="text-xl font-bold text-emerald-500"><i class="fa-solid fa-arrow-trend-up mr-2"></i>Recebimentos</h3>
-                        <button onclick="exportPDF('incomes')" class="no-print text-slate-400 hover:text-white transition-colors" title="Exportar para PDF">
-                            <i class="fa-solid fa-file-pdf text-xl"></i>
+                        <button onclick="openReportModal('incomes')" class="bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-500/30 px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2">
+                            <i class="fa-solid fa-file-pdf"></i> Visualizar / Salvar PDF
                         </button>
                     </div>
                     
-                    <form id="form-income" onsubmit="addTransaction(event, 'incomes')" class="no-print flex gap-2 mb-6">
+                    <form id="form-income" onsubmit="addTransaction(event, 'incomes')" class="flex gap-2 mb-6">
                         <input type="text" id="income-desc" required placeholder="Descrição" class="flex-1 bg-slate-900 border border-slate-700 rounded-lg p-2 text-slate-100 focus:outline-none focus:border-emerald-500">
                         <input type="number" id="income-val" required step="0.01" min="0.01" placeholder="Valor" class="w-28 bg-slate-900 border border-slate-700 rounded-lg p-2 text-slate-100 focus:outline-none focus:border-emerald-500">
                         <button type="submit" class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 rounded-lg transition-colors"><i class="fa-solid fa-plus"></i></button>
@@ -122,22 +113,19 @@
 
                     <ul id="list-incomes" class="space-y-2 mb-4"></ul>
                 </div>
-                <div class="pdf-footer text-emerald-400">
-                    Soma Parcial: <span id="pdf-total-incomes">R$ 0,00</span>
-                </div>
             </div>
 
             <!-- Gastos -->
-            <div id="export-expenses" class="bg-slate-800 rounded-xl p-6 border border-slate-700 relative flex flex-col justify-between">
+            <div class="bg-slate-800 rounded-xl p-6 border border-slate-700 flex flex-col justify-between">
                 <div>
                     <div class="flex justify-between items-center mb-6">
                         <h3 class="text-xl font-bold text-rose-500"><i class="fa-solid fa-arrow-trend-down mr-2"></i>Gastos</h3>
-                        <button onclick="exportPDF('expenses')" class="no-print text-slate-400 hover:text-white transition-colors" title="Exportar para PDF">
-                            <i class="fa-solid fa-file-pdf text-xl"></i>
+                        <button onclick="openReportModal('expenses')" class="bg-rose-600/20 hover:bg-rose-600/30 text-rose-400 border border-rose-500/30 px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2">
+                            <i class="fa-solid fa-file-pdf"></i> Visualizar / Salvar PDF
                         </button>
                     </div>
                     
-                    <form id="form-expense" onsubmit="addTransaction(event, 'expenses')" class="no-print flex gap-2 mb-6">
+                    <form id="form-expense" onsubmit="addTransaction(event, 'expenses')" class="flex gap-2 mb-6">
                         <input type="text" id="expense-desc" required placeholder="Descrição" class="flex-1 bg-slate-900 border border-slate-700 rounded-lg p-2 text-slate-100 focus:outline-none focus:border-rose-500">
                         <input type="number" id="expense-val" required step="0.01" min="0.01" placeholder="Valor" class="w-28 bg-slate-900 border border-slate-700 rounded-lg p-2 text-slate-100 focus:outline-none focus:border-rose-500">
                         <button type="submit" class="bg-rose-600 hover:bg-rose-500 text-white px-4 rounded-lg transition-colors"><i class="fa-solid fa-plus"></i></button>
@@ -145,11 +133,75 @@
 
                     <ul id="list-expenses" class="space-y-2 mb-4"></ul>
                 </div>
-                <div class="pdf-footer text-rose-400">
-                    Soma Parcial: <span id="pdf-total-expenses">R$ 0,00</span>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- MODAL DE VISUALIZAÇÃO DE RELATÓRIO PARA PDF -->
+    <div id="report-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 overflow-y-auto">
+        <div class="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+            <!-- Cabeçalho do Modal -->
+            <div class="bg-slate-800 p-4 px-6 flex justify-between items-center border-b border-slate-700">
+                <h3 id="report-modal-title" class="text-lg font-bold text-emerald-400 flex items-center gap-2">
+                    <i class="fa-solid fa-file-invoice"></i> Relatório Financeiro
+                </h3>
+                <button onclick="closeReportModal()" class="text-slate-400 hover:text-white text-xl">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <!-- Corpo do Relatório (Visualização idêntica a um PDF limpo e profissional) -->
+            <div id="report-content-area" class="p-6 md:p-8 overflow-y-auto bg-slate-900 text-slate-100 space-y-6 flex-1">
+                <div class="border-b border-slate-700 pb-4 flex justify-between items-end">
+                    <div>
+                        <p class="text-xs uppercase tracking-wider text-slate-400 font-semibold">Relatório Oficial</p>
+                        <h2 id="report-type-heading" class="text-2xl font-extrabold text-white mt-1">Recebimentos</h2>
+                    </div>
+                    <div class="text-right">
+                        <p id="report-month-heading" class="text-emerald-400 font-bold text-lg">Janeiro de 2026</p>
+                        <p class="text-xs text-slate-400">Gerado pelo App de Gestão</p>
+                    </div>
+                </div>
+
+                <div>
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="border-b border-slate-700 text-slate-400 text-xs uppercase">
+                                <th class="py-3 px-2">Descrição</th>
+                                <th class="py-3 px-2 text-right">Valor</th>
+                            </tr>
+                        </thead>
+                        <tbody id="report-items-table" class="divide-y divide-slate-800 text-sm">
+                            <!-- Injetado via JS -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="pt-4 border-t border-slate-700 flex justify-between items-center bg-slate-800/40 p-4 rounded-xl">
+                    <span class="font-bold text-slate-300 text-base">Soma Parcial Acumulada:</span>
+                    <span id="report-total-sum" class="text-xl font-black text-emerald-400">R$ 0,00</span>
+                </div>
+
+                <!-- Dica de caminho de salvamento no celular -->
+                <div class="bg-slate-800/80 border border-slate-700 p-3 rounded-lg text-xs text-slate-300 flex items-start gap-2 mt-4">
+                    <i class="fa-solid fa-circle-info text-emerald-400 mt-0.5"></i>
+                    <div>
+                        <span class="font-bold text-white">Onde o PDF será salvo no celular:</span><br>
+                        Ao clicar em "Baixar PDF", o arquivo será salvo na pasta padrão de <strong>Downloads</strong> do seu celular ou computador (ex: <code>Armazenamento Interno/Download</code> no Android/iOS/PC).
+                    </div>
                 </div>
             </div>
 
+            <!-- Rodapé com Ações -->
+            <div class="bg-slate-800 p-4 px-6 border-t border-slate-700 flex justify-end gap-3">
+                <button onclick="closeReportModal()" class="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors">
+                    Fechar
+                </button>
+                <button onclick="downloadAsPDF()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 shadow-lg">
+                    <i class="fa-solid fa-download"></i> Baixar PDF
+                </button>
+            </div>
         </div>
     </div>
 
@@ -179,11 +231,15 @@
         </div>
     </div>
 
+    <!-- Print CSS e Print JS CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
     <script>
         const STORAGE_KEY = 'bg_finances_data';
         let userPassword = '';
         let appData = {};
         let currentMonthDate = new Date();
+        let activeReportType = 'incomes';
 
         const formatBRL = (value) => {
             return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
@@ -386,10 +442,6 @@
             document.getElementById('total-incomes').innerText = formatBRL(totalInc);
             document.getElementById('total-expenses').innerText = formatBRL(totalExp);
             
-            // Atualiza rodapés de PDF ocultos/visíveis
-            document.getElementById('pdf-total-incomes').innerText = formatBRL(totalInc);
-            document.getElementById('pdf-total-expenses').innerText = formatBRL(totalExp);
-            
             const balanceEl = document.getElementById('total-balance');
             balanceEl.innerText = formatBRL(balance);
             balanceEl.className = `text-2xl font-bold ${balance >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
@@ -414,35 +466,84 @@
                     <span class="text-slate-200">${item.desc}</span>
                     <div class="flex items-center gap-4">
                         <span class="font-semibold ${valueColor}">${formatBRL(item.value)}</span>
-                        ${!isClosed ? `<button onclick="removeTransaction('${type}', '${item.id}')" class="no-print text-slate-500 hover:text-rose-500 transition-colors"><i class="fa-solid fa-trash"></i></button>` : ''}
+                        ${!isClosed ? `<button onclick="removeTransaction('${type}', '${item.id}')" class="text-slate-500 hover:text-rose-500 transition-colors"><i class="fa-solid fa-trash"></i></button>` : ''}
                     </div>
                 `;
                 listEl.appendChild(li);
             });
         }
 
-        function exportPDF(type) {
-            const elementId = type === 'incomes' ? 'export-incomes' : 'export-expenses';
-            const element = document.getElementById(elementId);
-            
-            element.classList.add('pdf-mode');
-            
+        // Sistema de Visualização e Exportação de PDF Corrigido
+        function openReportModal(type) {
+            activeReportType = type;
+            const key = getMonthKey(currentMonthDate);
+            const monthData = appData[key];
+            const items = monthData[type];
+
+            const titleHeading = document.getElementById('report-type-heading');
+            const monthHeading = document.getElementById('report-month-heading');
+            const tableBody = document.getElementById('report-items-table');
+            const totalSumEl = document.getElementById('report-total-sum');
+            const modalTitleIcon = document.getElementById('report-modal-title');
+
+            const isIncome = type === 'incomes';
+            titleHeading.innerText = isIncome ? 'Recebimentos' : 'Gastos';
+            modalTitleIcon.innerHTML = `<i class="fa-solid ${isIncome ? 'fa-arrow-trend-up text-emerald-400' : 'fa-arrow-trend-down text-rose-400'}"></i> Relatório de ${isIncome ? 'Recebimentos' : 'Gastos'}`;
+            monthHeading.innerText = formatMonthDisplay(currentMonthDate);
+
+            tableBody.innerHTML = '';
+            if (items.length === 0) {
+                tableBody.innerHTML = `<tr><td colspan="2" class="text-center py-6 text-slate-500">Nenhum registro encontrado para este mês.</td></tr>`;
+            } else {
+                items.forEach(item => {
+                    const tr = document.createElement('tr');
+                    tr.className = 'border-b border-slate-800/60';
+                    tr.innerHTML = `
+                        <td class="py-3 px-2 text-slate-200">${item.desc}</td>
+                        <td class="py-3 px-2 text-right font-semibold ${isIncome ? 'text-emerald-400' : 'text-rose-400'}">${formatBRL(item.value)}</td>
+                    `;
+                    tableBody.appendChild(tr);
+                });
+            }
+
+            const totalSum = items.reduce((acc, curr) => acc + curr.value, 0);
+            totalSumEl.innerText = formatBRL(totalSum);
+            totalSumEl.className = `text-xl font-black ${isIncome ? 'text-emerald-400' : 'text-rose-400'}`;
+
+            document.getElementById('report-modal').classList.remove('hidden');
+        }
+
+        function closeReportModal() {
+            document.getElementById('report-modal').classList.add('hidden');
+        }
+
+        function downloadAsPDF() {
+            const content = document.getElementById('report-content-area');
             const monthName = formatMonthDisplay(currentMonthDate).replace(' de ', '_');
-            const fileName = `Relatorio_${type === 'incomes' ? 'Recebimentos' : 'Gastos'}_${monthName}.pdf`;
+            const typeLabel = activeReportType === 'incomes' ? 'Recebimentos' : 'Gastos';
+            const fileName = `Relatorio_${typeLabel}_${monthName}.pdf`;
+
+            // Oculta temporariamente a caixa de instrução de salvamento do celular para não sair no PDF
+            const infoBox = content.querySelector('.bg-slate-800\/80');
+            if (infoBox) infoBox.style.display = 'none';
 
             const opt = {
                 margin:       10,
                 filename:     fileName,
                 image:        { type: 'jpeg', quality: 0.98 },
-                html2canvas:  { scale: 2, backgroundColor: '#0f172a', useCORS: true },
+                html2canvas:  { scale: 2, backgroundColor: '#0f172a', useCORS: true, logging: false },
                 jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
             };
 
-            html2pdf().set(opt).from(element).save().then(() => {
-                element.classList.remove('pdf-mode');
+            html2pdf().set(opt).from(content).save().then(() => {
+                if (infoBox) infoBox.style.display = 'flex';
+                alert("PDF gerado com sucesso!
+
+O arquivo foi salvo na pasta Downloads do seu dispositivo.");
             }).catch(err => {
                 console.error("Erro ao gerar PDF:", err);
-                element.classList.remove('pdf-mode');
+                if (infoBox) infoBox.style.display = 'flex';
+                alert("Ocorreu um erro ao gerar o PDF. Tente novamente.");
             });
         }
 
