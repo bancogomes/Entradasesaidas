@@ -26,8 +26,10 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <style>
+        .pdf-mode { background-color: #0f172a !important; color: #f1f5f9 !important; padding: 20px; font-family: sans-serif; }
         .pdf-mode .no-print { display: none !important; }
-        .pdf-mode { background-color: #0f172a !important; color: #f1f5f9 !important; padding: 20px; }
+        .pdf-mode .pdf-footer { display: block !important; margin-top: 20px; padding-top: 10px; border-top: 1px solid #334155; font-weight: bold; font-size: 16px; text-align: right; }
+        .pdf-footer { display: none; }
     </style>
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen font-sans">
@@ -57,16 +59,21 @@
             <h1 class="text-xl md:text-2xl font-bold text-emerald-500">
                 <i class="fa-solid fa-wallet mr-2"></i>Gestão Financeira
             </h1>
-            <button onclick="logout()" class="text-slate-400 hover:text-rose-500 transition-colors">
-                <i class="fa-solid fa-right-from-bracket mr-1"></i>Sair
-            </button>
+            <div class="flex items-center gap-4">
+                <button onclick="openChangePasswordModal()" class="text-slate-400 hover:text-emerald-400 transition-colors text-sm" title="Alterar Senha">
+                    <i class="fa-solid fa-key mr-1"></i>Alterar Senha
+                </button>
+                <button onclick="logout()" class="text-slate-400 hover:text-rose-500 transition-colors text-sm">
+                    <i class="fa-solid fa-right-from-bracket mr-1"></i>Sair
+                </button>
+            </div>
         </header>
 
         <!-- Navegação de Mês -->
         <div class="bg-slate-800 rounded-xl p-4 mb-6 border border-slate-700 flex flex-col md:flex-row justify-between items-center gap-4">
             <div class="flex items-center gap-4">
                 <button onclick="changeMonth(-1)" class="bg-slate-700 hover:bg-slate-600 p-2 rounded-lg transition-colors"><i class="fa-solid fa-chevron-left"></i></button>
-                <h2 id="current-month-display" class="text-xl font-bold min-w-[150px] text-center capitalize">Janeiro 2026</h2>
+                <h2 id="current-month-display" class="text-xl font-bold min-w-[180px] text-center capitalize">Janeiro 2026</h2>
                 <button onclick="changeMonth(1)" class="bg-slate-700 hover:bg-slate-600 p-2 rounded-lg transition-colors"><i class="fa-solid fa-chevron-right"></i></button>
             </div>
             
@@ -98,41 +105,77 @@
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             
             <!-- Recebimentos -->
-            <div id="export-incomes" class="bg-slate-800 rounded-xl p-6 border border-slate-700 relative">
-                <div class="flex justify-between items-center mb-6">
-                    <h3 class="text-xl font-bold text-emerald-500"><i class="fa-solid fa-arrow-trend-up mr-2"></i>Recebimentos</h3>
-                    <button onclick="exportPDF('incomes')" class="no-print text-slate-400 hover:text-white transition-colors" title="Exportar para PDF">
-                        <i class="fa-solid fa-file-pdf text-xl"></i>
-                    </button>
-                </div>
-                
-                <form id="form-income" onsubmit="addTransaction(event, 'incomes')" class="no-print flex gap-2 mb-6">
-                    <input type="text" id="income-desc" required placeholder="Descrição" class="flex-1 bg-slate-900 border border-slate-700 rounded-lg p-2 text-slate-100 focus:outline-none focus:border-emerald-500">
-                    <input type="number" id="income-val" required step="0.01" min="0.01" placeholder="Valor" class="w-28 bg-slate-900 border border-slate-700 rounded-lg p-2 text-slate-100 focus:outline-none focus:border-emerald-500">
-                    <button type="submit" class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 rounded-lg transition-colors"><i class="fa-solid fa-plus"></i></button>
-                </form>
+            <div id="export-incomes" class="bg-slate-800 rounded-xl p-6 border border-slate-700 relative flex flex-col justify-between">
+                <div>
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-xl font-bold text-emerald-500"><i class="fa-solid fa-arrow-trend-up mr-2"></i>Recebimentos</h3>
+                        <button onclick="exportPDF('incomes')" class="no-print text-slate-400 hover:text-white transition-colors" title="Exportar para PDF">
+                            <i class="fa-solid fa-file-pdf text-xl"></i>
+                        </button>
+                    </div>
+                    
+                    <form id="form-income" onsubmit="addTransaction(event, 'incomes')" class="no-print flex gap-2 mb-6">
+                        <input type="text" id="income-desc" required placeholder="Descrição" class="flex-1 bg-slate-900 border border-slate-700 rounded-lg p-2 text-slate-100 focus:outline-none focus:border-emerald-500">
+                        <input type="number" id="income-val" required step="0.01" min="0.01" placeholder="Valor" class="w-28 bg-slate-900 border border-slate-700 rounded-lg p-2 text-slate-100 focus:outline-none focus:border-emerald-500">
+                        <button type="submit" class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 rounded-lg transition-colors"><i class="fa-solid fa-plus"></i></button>
+                    </form>
 
-                <ul id="list-incomes" class="space-y-2"></ul>
+                    <ul id="list-incomes" class="space-y-2 mb-4"></ul>
+                </div>
+                <div class="pdf-footer text-emerald-400">
+                    Soma Parcial: <span id="pdf-total-incomes">R$ 0,00</span>
+                </div>
             </div>
 
             <!-- Gastos -->
-            <div id="export-expenses" class="bg-slate-800 rounded-xl p-6 border border-slate-700 relative">
-                <div class="flex justify-between items-center mb-6">
-                    <h3 class="text-xl font-bold text-rose-500"><i class="fa-solid fa-arrow-trend-down mr-2"></i>Gastos</h3>
-                    <button onclick="exportPDF('expenses')" class="no-print text-slate-400 hover:text-white transition-colors" title="Exportar para PDF">
-                        <i class="fa-solid fa-file-pdf text-xl"></i>
-                    </button>
-                </div>
-                
-                <form id="form-expense" onsubmit="addTransaction(event, 'expenses')" class="no-print flex gap-2 mb-6">
-                    <input type="text" id="expense-desc" required placeholder="Descrição" class="flex-1 bg-slate-900 border border-slate-700 rounded-lg p-2 text-slate-100 focus:outline-none focus:border-rose-500">
-                    <input type="number" id="expense-val" required step="0.01" min="0.01" placeholder="Valor" class="w-28 bg-slate-900 border border-slate-700 rounded-lg p-2 text-slate-100 focus:outline-none focus:border-rose-500">
-                    <button type="submit" class="bg-rose-600 hover:bg-rose-500 text-white px-4 rounded-lg transition-colors"><i class="fa-solid fa-plus"></i></button>
-                </form>
+            <div id="export-expenses" class="bg-slate-800 rounded-xl p-6 border border-slate-700 relative flex flex-col justify-between">
+                <div>
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-xl font-bold text-rose-500"><i class="fa-solid fa-arrow-trend-down mr-2"></i>Gastos</h3>
+                        <button onclick="exportPDF('expenses')" class="no-print text-slate-400 hover:text-white transition-colors" title="Exportar para PDF">
+                            <i class="fa-solid fa-file-pdf text-xl"></i>
+                        </button>
+                    </div>
+                    
+                    <form id="form-expense" onsubmit="addTransaction(event, 'expenses')" class="no-print flex gap-2 mb-6">
+                        <input type="text" id="expense-desc" required placeholder="Descrição" class="flex-1 bg-slate-900 border border-slate-700 rounded-lg p-2 text-slate-100 focus:outline-none focus:border-rose-500">
+                        <input type="number" id="expense-val" required step="0.01" min="0.01" placeholder="Valor" class="w-28 bg-slate-900 border border-slate-700 rounded-lg p-2 text-slate-100 focus:outline-none focus:border-rose-500">
+                        <button type="submit" class="bg-rose-600 hover:bg-rose-500 text-white px-4 rounded-lg transition-colors"><i class="fa-solid fa-plus"></i></button>
+                    </form>
 
-                <ul id="list-expenses" class="space-y-2"></ul>
+                    <ul id="list-expenses" class="space-y-2 mb-4"></ul>
+                </div>
+                <div class="pdf-footer text-rose-400">
+                    Soma Parcial: <span id="pdf-total-expenses">R$ 0,00</span>
+                </div>
             </div>
 
+        </div>
+    </div>
+
+    <!-- MODAL DE ALTERAR SENHA -->
+    <div id="password-modal" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+        <div class="bg-slate-800 p-6 rounded-xl shadow-2xl w-96 max-w-[90%] border border-slate-700">
+            <h3 class="text-xl font-bold text-emerald-500 mb-4"><i class="fa-solid fa-key mr-2"></i>Alterar Senha</h3>
+            <div class="space-y-3 mb-6">
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">Senha Atual</label>
+                    <input type="password" id="current-pass-input" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-slate-100 focus:outline-none focus:border-emerald-500 text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">Nova Senha</label>
+                    <input type="password" id="new-pass-input" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-slate-100 focus:outline-none focus:border-emerald-500 text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">Confirmar Nova Senha</label>
+                    <input type="password" id="confirm-pass-input" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-slate-100 focus:outline-none focus:border-emerald-500 text-sm">
+                </div>
+                <p id="modal-error" class="text-rose-500 text-xs hidden"></p>
+            </div>
+            <div class="flex gap-3">
+                <button onclick="closeChangePasswordModal()" class="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-semibold py-2 rounded-lg transition-colors text-sm">Cancelar</button>
+                <button onclick="confirmChangePassword()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-2 rounded-lg transition-colors text-sm">Salvar</button>
+            </div>
         </div>
     </div>
 
@@ -155,9 +198,9 @@
         };
 
         const encryptData = (data) => CryptoJS.AES.encrypt(JSON.stringify(data), userPassword).toString();
-        const decryptData = (ciphertext) => {
+        const decryptData = (ciphertext, password) => {
             try {
-                const bytes = CryptoJS.AES.decrypt(ciphertext, userPassword);
+                const bytes = CryptoJS.AES.decrypt(ciphertext, password);
                 return JSON.parse(bytes.toString(CryptoJS.enc.Utf8));
             } catch (e) {
                 return null;
@@ -171,14 +214,13 @@
             const storedData = localStorage.getItem(STORAGE_KEY);
             
             if (storedData) {
-                userPassword = input;
-                const decrypted = decryptData(storedData);
+                const decrypted = decryptData(storedData, input);
                 if (decrypted) {
+                    userPassword = input;
                     appData = decrypted;
                     loginSuccess();
                 } else {
                     document.getElementById('auth-error').classList.remove('hidden');
-                    userPassword = '';
                 }
             } else {
                 userPassword = input;
@@ -207,6 +249,49 @@
         function saveData() {
             if (!userPassword) return;
             localStorage.setItem(STORAGE_KEY, encryptData(appData));
+        }
+
+        // Alterar Senha
+        function openChangePasswordModal() {
+            document.getElementById('current-pass-input').value = '';
+            document.getElementById('new-pass-input').value = '';
+            document.getElementById('confirm-pass-input').value = '';
+            document.getElementById('modal-error').classList.add('hidden');
+            document.getElementById('password-modal').classList.remove('hidden');
+        }
+
+        function closeChangePasswordModal() {
+            document.getElementById('password-modal').classList.add('hidden');
+        }
+
+        function confirmChangePassword() {
+            const currentPass = document.getElementById('current-pass-input').value;
+            const newPass = document.getElementById('new-pass-input').value;
+            const confirmPass = document.getElementById('confirm-pass-input').value;
+            const errorEl = document.getElementById('modal-error');
+
+            if (currentPass !== userPassword) {
+                errorEl.innerText = "Senha atual incorreta.";
+                errorEl.classList.remove('hidden');
+                return;
+            }
+
+            if (!newPass || newPass.length < 3) {
+                errorEl.innerText = "A nova senha deve ter pelo menos 3 caracteres.";
+                errorEl.classList.remove('hidden');
+                return;
+            }
+
+            if (newPass !== confirmPass) {
+                errorEl.innerText = "As senhas novas não coincidem.";
+                errorEl.classList.remove('hidden');
+                return;
+            }
+
+            userPassword = newPass;
+            saveData();
+            closeChangePasswordModal();
+            alert("Senha alterada com sucesso!");
         }
 
         function checkAndInitMonth(monthKey) {
@@ -301,6 +386,10 @@
             document.getElementById('total-incomes').innerText = formatBRL(totalInc);
             document.getElementById('total-expenses').innerText = formatBRL(totalExp);
             
+            // Atualiza rodapés de PDF ocultos/visíveis
+            document.getElementById('pdf-total-incomes').innerText = formatBRL(totalInc);
+            document.getElementById('pdf-total-expenses').innerText = formatBRL(totalExp);
+            
             const balanceEl = document.getElementById('total-balance');
             balanceEl.innerText = formatBRL(balance);
             balanceEl.className = `text-2xl font-bold ${balance >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
@@ -345,11 +434,14 @@
                 margin:       10,
                 filename:     fileName,
                 image:        { type: 'jpeg', quality: 0.98 },
-                html2canvas:  { scale: 2, backgroundColor: '#0f172a' },
+                html2canvas:  { scale: 2, backgroundColor: '#0f172a', useCORS: true },
                 jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
             };
 
             html2pdf().set(opt).from(element).save().then(() => {
+                element.classList.remove('pdf-mode');
+            }).catch(err => {
+                console.error("Erro ao gerar PDF:", err);
                 element.classList.remove('pdf-mode');
             });
         }
