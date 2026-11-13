@@ -22,6 +22,9 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <!-- FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- jsPDF e AutoTable para geração nativa de PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen font-sans">
 
@@ -158,7 +161,7 @@
             </div>
 
             <!-- Corpo da Pré-visualização na tela -->
-            <div id="report-content-area" class="p-4 md:p-8 overflow-y-auto bg-slate-900 text-slate-100 space-y-6 flex-1">
+            <div class="p-4 md:p-8 overflow-y-auto bg-slate-900 text-slate-100 space-y-6 flex-1">
                 <div class="border-b border-slate-700 pb-4 flex justify-between items-end">
                     <div>
                         <p class="text-[10px] md:text-xs uppercase tracking-wider text-slate-400 font-semibold">Resumo do Mês</p>
@@ -194,18 +197,18 @@
                 <button onclick="closeReportModal()" class="bg-slate-700 hover:bg-slate-600 text-white px-4 py-3 md:py-2 rounded-lg text-sm font-semibold transition-colors flex-1 md:flex-none">
                     Voltar
                 </button>
-                <button id="btn-generate-pdf" onclick="generatePDF()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-3 md:py-2 rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-2 shadow-lg flex-1 md:flex-none">
+                <button id="btn-generate-pdf" onclick="generateNativePDF()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-3 md:py-2 rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-2 shadow-lg flex-1 md:flex-none">
                     <i class="fa-solid fa-cogs"></i> Preparar Arquivo PDF
                 </button>
             </div>
 
-            <!-- Rodapé 2: Botões de Ação Final (Oculto inicialmente) -->
+            <!-- Rodapé 2: Botões de Ação Final -->
             <div id="pdf-actions" class="hidden bg-slate-800 p-4 px-4 md:px-6 border-t border-slate-700 flex flex-col md:flex-row justify-end gap-3">
                 <button onclick="viewPDF()" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-3 md:py-2 rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-2 shadow-lg">
-                    <i class="fa-solid fa-eye"></i> Visualizar Documento
+                    <i class="fa-solid fa-eye"></i> Visualizar PDF
                 </button>
                 <button onclick="saveOrSharePDF()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-3 md:py-2 rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-2 shadow-lg">
-                    <i class="fa-solid fa-share-nodes"></i> Escolher Onde Salvar
+                    <i class="fa-solid fa-share-nodes"></i> Compartilhar / Salvar
                 </button>
             </div>
         </div>
@@ -236,9 +239,6 @@
             </div>
         </div>
     </div>
-
-    <!-- Print CSS e Print JS CDN -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
     <script>
         const STORAGE_KEY = 'bg_finances_data';
@@ -489,7 +489,7 @@
             });
         }
 
-        // NOVO FLUXO DE PDF PARA MOBILE (SEM BUG VISUAL)
+        // PREVIEW NA TELA
         function openReportModal(type) {
             activeReportType = type;
             const key = getMonthKey(currentMonthDate);
@@ -499,9 +499,6 @@
             // Reseta botões
             document.getElementById('pdf-actions').classList.add('hidden');
             document.getElementById('modal-footer-initial').classList.remove('hidden');
-            const btnGen = document.getElementById('btn-generate-pdf');
-            btnGen.innerHTML = '<i class="fa-solid fa-cogs"></i> Preparar Arquivo PDF';
-            btnGen.disabled = false;
 
             const titleHeading = document.getElementById('report-type-heading');
             const monthHeading = document.getElementById('report-month-heading');
@@ -538,98 +535,90 @@
             document.getElementById('report-modal').classList.add('hidden');
         }
 
-        function generatePDF() {
+        // NOVO GERADOR NATIVO (100% livre de bugs visuais)
+        function generateNativePDF() {
             const btnGen = document.getElementById('btn-generate-pdf');
+            const originalText = btnGen.innerHTML;
             btnGen.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Processando...';
             btnGen.disabled = true;
 
-            const key = getMonthKey(currentMonthDate);
-            const items = appData[key][activeReportType];
-            const isIncome = activeReportType === 'incomes';
-            const totalSum = items.reduce((acc, curr) => acc + curr.value, 0);
-            const mainColor = isIncome ? '#059669' : '#e11d48'; // emerald vs rose
+            setTimeout(() => {
+                try {
+                    const { jsPDF } = window.jspdf;
+                    const doc = new jsPDF();
 
-            // Criação de um Template HTML Oculto 100% Limpo (Remove o bug do iOS/Safari com o Dark Mode)
-            const printDiv = document.createElement('div');
-            printDiv.style.position = 'absolute';
-            printDiv.style.top = '-9999px';
-            printDiv.style.left = '0';
-            printDiv.style.width = '800px';
-            printDiv.style.backgroundColor = '#ffffff';
-            printDiv.style.color = '#000000';
-            printDiv.style.padding = '40px';
-            printDiv.style.fontFamily = 'Arial, sans-serif';
+                    const key = getMonthKey(currentMonthDate);
+                    const items = appData[key][activeReportType];
+                    const isIncome = activeReportType === 'incomes';
+                    const totalSum = items.reduce((acc, curr) => acc + curr.value, 0);
+                    
+                    const titleText = isIncome ? 'Recebimentos' : 'Gastos';
+                    const monthText = formatMonthDisplay(currentMonthDate);
 
-            let tableRows = '';
-            items.forEach(item => {
-                tableRows += `
-                    <tr>
-                        <td style="padding: 12px; border-bottom: 1px solid #e2e8f0;">${item.desc}</td>
-                        <td style="padding: 12px; border-bottom: 1px solid #e2e8f0; text-align: right; color: ${mainColor}; font-weight: bold;">${formatBRL(item.value)}</td>
-                    </tr>
-                `;
-            });
+                    // Cabeçalho do PDF
+                    doc.setFontSize(22);
+                    doc.setTextColor(15, 23, 42); // slate-900
+                    doc.text(`Relatorio de ${titleText}`, 14, 20);
+                    
+                    doc.setFontSize(12);
+                    doc.setTextColor(100, 116, 139); // slate-500
+                    doc.text(`Referencia: ${monthText.toUpperCase()}`, 14, 28);
 
-            printDiv.innerHTML = `
-                <div style="border-bottom: 2px solid #cbd5e1; padding-bottom: 10px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: flex-end;">
-                    <div>
-                        <p style="font-size: 12px; color: #64748b; margin: 0; text-transform: uppercase;">Relatório Oficial</p>
-                        <h2 style="margin: 5px 0 0 0; color: #0f172a; font-size: 28px;">${isIncome ? 'Recebimentos' : 'Gastos'}</h2>
-                    </div>
-                    <div style="text-align: right;">
-                        <p style="margin: 0; color: ${mainColor}; font-weight: bold; font-size: 18px;">${formatMonthDisplay(currentMonthDate)}</p>
-                    </div>
-                </div>
-                <table style="width: 100%; border-collapse: collapse;">
-                    <thead>
-                        <tr style="background-color: #f8fafc;">
-                            <th style="padding: 12px; text-align: left; border-bottom: 2px solid #cbd5e1; color: #475569;">Descrição</th>
-                            <th style="padding: 12px; text-align: right; border-bottom: 2px solid #cbd5e1; color: #475569;">Valor</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${items.length ? tableRows : '<tr><td colspan="2" style="padding: 20px; text-align: center; color: #64748b;">Nenhum registro.</td></tr>'}
-                    </tbody>
-                </table>
-                <div style="margin-top: 30px; padding: 20px; background-color: #f8fafc; border-radius: 8px; text-align: right; font-size: 18px;">
-                    <strong>Soma Parcial Acumulada:</strong> 
-                    <span style="color: ${mainColor}; font-size: 24px; font-weight: bold; margin-left: 10px;">${formatBRL(totalSum)}</span>
-                </div>
-            `;
+                    // Preparando dados da tabela
+                    const tableColumn = ["Descricao da Transacao", "Valor"];
+                    const tableRows = [];
 
-            document.body.appendChild(printDiv);
+                    items.forEach(item => {
+                        // Limpando caracteres que possam bugar o gerador
+                        const desc = item.desc || "-";
+                        tableRows.push([desc, formatBRL(item.value)]);
+                    });
 
-            const opt = {
-                margin:       10,
-                filename:     `Relatorio.pdf`,
-                image:        { type: 'jpeg', quality: 0.98 },
-                html2canvas:  { scale: 2, useCORS: true, backgroundColor: '#ffffff', logging: false },
-                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
-            };
+                    // Cores do tema (Emerald ou Rose)
+                    const headColor = isIncome ? [16, 185, 129] : [225, 29, 72];
 
-            // Gera o PDF como Blob em vez de baixar direto
-            html2pdf().set(opt).from(printDiv).output('blob').then(function(blob) {
-                document.body.removeChild(printDiv); // Limpa o template oculto
-                
-                currentPdfBlob = blob;
-                if (currentPdfUrl) URL.revokeObjectURL(currentPdfUrl);
-                currentPdfUrl = URL.createObjectURL(blob);
+                    // Gerando a Tabela Nativamente
+                    doc.autoTable({
+                        startY: 35,
+                        head: [tableColumn],
+                        body: tableRows.length ? tableRows : [["Nenhum registro encontrado.", ""]],
+                        theme: 'striped',
+                        headStyles: { fillColor: headColor, textColor: 255, fontStyle: 'bold' },
+                        styles: { fontSize: 11, cellPadding: 6 },
+                        columnStyles: { 
+                            0: { halign: 'left' },
+                            1: { halign: 'right', fontStyle: 'bold' } 
+                        },
+                        alternateRowStyles: { fillColor: [248, 250, 252] }
+                    });
 
-                // Alterna os botões
-                document.getElementById('modal-footer-initial').classList.add('hidden');
-                document.getElementById('pdf-actions').classList.remove('hidden');
+                    // Total no final da tabela
+                    const finalY = doc.lastAutoTable.finalY || 35;
+                    doc.setFontSize(14);
+                    doc.setTextColor(isIncome ? 5 : 225, isIncome ? 150 : 29, isIncome ? 105 : 72);
+                    doc.text(`Soma Parcial Acumulada: ${formatBRL(totalSum)}`, 14, finalY + 15);
 
-            }).catch(err => {
-                console.error("Erro no PDF:", err);
-                document.body.removeChild(printDiv);
-                btnGen.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> Erro. Tentar Novamente';
-                btnGen.disabled = false;
-            });
+                    // Converte o documento para Blob em memória
+                    currentPdfBlob = doc.output('blob');
+                    if (currentPdfUrl) URL.revokeObjectURL(currentPdfUrl);
+                    currentPdfUrl = URL.createObjectURL(currentPdfBlob);
+
+                    // Alterna a interface mostrando os botões finais
+                    document.getElementById('modal-footer-initial').classList.add('hidden');
+                    document.getElementById('pdf-actions').classList.remove('hidden');
+
+                } catch (error) {
+                    console.error("Erro fatal ao gerar PDF:", error);
+                    alert("Ocorreu um erro ao gerar o PDF. Verifique o console.");
+                } finally {
+                    btnGen.innerHTML = originalText;
+                    btnGen.disabled = false;
+                }
+            }, 300); // Pequeno atraso para a interface não travar
         }
 
         function viewPDF() {
             if (currentPdfUrl) {
-                // Abre o PDF em uma nova aba do navegador para visualização (iOS suporta perfeitamente)
                 window.open(currentPdfUrl, '_blank');
             }
         }
@@ -641,17 +630,16 @@
             const typeLabel = activeReportType === 'incomes' ? 'Recebimentos' : 'Gastos';
             const fileName = `Relatorio_${typeLabel}_${monthName}.pdf`;
 
-            // Verifica se o dispositivo (iOS/Android) suporta a janela nativa de compartilhamento/salvamento
+            // Usa o sistema nativo de compartilhamento do celular se disponível
             const file = new File([currentPdfBlob], fileName, { type: 'application/pdf' });
             
             if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                // Abre aquela janela debaixo do celular para escolher "Salvar em Arquivos", "WhatsApp", etc.
                 navigator.share({
                     files: [file],
                     title: 'Relatório Financeiro',
                 }).catch(err => console.log('Ação cancelada pelo usuário ou erro:', err));
             } else {
-                // Alternativa para computadores ou navegadores antigos
+                // Alternativa padrão se o celular não suportar a janela nativa
                 const a = document.createElement('a');
                 a.href = currentPdfUrl;
                 a.download = fileName;
