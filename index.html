@@ -150,23 +150,22 @@
             <!-- Cabeçalho do Modal -->
             <div class="bg-slate-800 p-4 px-4 md:px-6 flex justify-between items-center border-b border-slate-700">
                 <h3 id="report-modal-title" class="text-base md:text-lg font-bold text-emerald-400 flex items-center gap-2">
-                    <i class="fa-solid fa-file-invoice"></i> Relatório Financeiro
+                    <i class="fa-solid fa-file-invoice"></i> Pré-visualização dos Dados
                 </h3>
                 <button onclick="closeReportModal()" class="text-slate-400 hover:text-white text-2xl w-10 h-10 flex items-center justify-center">
                     <i class="fa-solid fa-xmark"></i>
                 </button>
             </div>
 
-            <!-- Corpo do Relatório -->
+            <!-- Corpo da Pré-visualização na tela -->
             <div id="report-content-area" class="p-4 md:p-8 overflow-y-auto bg-slate-900 text-slate-100 space-y-6 flex-1">
                 <div class="border-b border-slate-700 pb-4 flex justify-between items-end">
                     <div>
-                        <p class="text-[10px] md:text-xs uppercase tracking-wider text-slate-400 font-semibold">Relatório Oficial</p>
+                        <p class="text-[10px] md:text-xs uppercase tracking-wider text-slate-400 font-semibold">Resumo do Mês</p>
                         <h2 id="report-type-heading" class="text-xl md:text-2xl font-extrabold text-white mt-1">Recebimentos</h2>
                     </div>
                     <div class="text-right">
                         <p id="report-month-heading" class="text-emerald-400 font-bold text-sm md:text-lg">Janeiro de 2026</p>
-                        <p class="text-[10px] md:text-xs text-slate-400">Gerado pelo App</p>
                     </div>
                 </div>
 
@@ -188,24 +187,25 @@
                     <span class="font-bold text-slate-300 text-sm md:text-base">Soma Parcial Acumulada:</span>
                     <span id="report-total-sum" class="text-lg md:text-xl font-black text-emerald-400">R$ 0,00</span>
                 </div>
-
-                <!-- Dica de caminho de salvamento no celular -->
-                <div class="bg-slate-800/80 border border-slate-700 p-3 rounded-lg text-[10px] md:text-xs text-slate-300 flex items-start gap-2 mt-4 no-print-info">
-                    <i class="fa-solid fa-circle-info text-emerald-400 mt-0.5 text-lg"></i>
-                    <div>
-                        <span class="font-bold text-white">Salvar no Celular:</span><br>
-                        O PDF será salvo na pasta <strong>Downloads</strong> do seu celular.
-                    </div>
-                </div>
             </div>
 
-            <!-- Rodapé com Ações -->
-            <div class="bg-slate-800 p-4 px-4 md:px-6 border-t border-slate-700 flex justify-end gap-3">
+            <!-- Rodapé 1: Botão de Preparar PDF -->
+            <div id="modal-footer-initial" class="bg-slate-800 p-4 px-4 md:px-6 border-t border-slate-700 flex justify-end gap-3">
                 <button onclick="closeReportModal()" class="bg-slate-700 hover:bg-slate-600 text-white px-4 py-3 md:py-2 rounded-lg text-sm font-semibold transition-colors flex-1 md:flex-none">
-                    Fechar
+                    Voltar
                 </button>
-                <button onclick="downloadAsPDF()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-3 md:py-2 rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-2 shadow-lg flex-1 md:flex-none">
-                    <i class="fa-solid fa-download"></i> Baixar PDF
+                <button id="btn-generate-pdf" onclick="generatePDF()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-3 md:py-2 rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-2 shadow-lg flex-1 md:flex-none">
+                    <i class="fa-solid fa-cogs"></i> Preparar Arquivo PDF
+                </button>
+            </div>
+
+            <!-- Rodapé 2: Botões de Ação Final (Oculto inicialmente) -->
+            <div id="pdf-actions" class="hidden bg-slate-800 p-4 px-4 md:px-6 border-t border-slate-700 flex flex-col md:flex-row justify-end gap-3">
+                <button onclick="viewPDF()" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-3 md:py-2 rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-2 shadow-lg">
+                    <i class="fa-solid fa-eye"></i> Visualizar Documento
+                </button>
+                <button onclick="saveOrSharePDF()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-3 md:py-2 rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-2 shadow-lg">
+                    <i class="fa-solid fa-share-nodes"></i> Escolher Onde Salvar
                 </button>
             </div>
         </div>
@@ -246,6 +246,8 @@
         let appData = {};
         let currentMonthDate = new Date();
         let activeReportType = 'incomes';
+        let currentPdfBlob = null;
+        let currentPdfUrl = null;
 
         const formatBRL = (value) => {
             return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
@@ -264,7 +266,7 @@
             try {
                 const bytes = CryptoJS.AES.decrypt(ciphertext, password);
                 const decryptedString = bytes.toString(CryptoJS.enc.Utf8);
-                if (!decryptedString) return null; // Prevenção de erro se a string for vazia (senha incorreta)
+                if (!decryptedString) return null;
                 return JSON.parse(decryptedString);
             } catch (e) {
                 return null;
@@ -272,14 +274,13 @@
         };
 
         function resetApp() {
-            if (confirm("ATENÇÃO: Isso vai apagar TODOS os seus dados salvos neste celular para desbugar o aplicativo. Tem certeza que deseja continuar?")) {
+            if (confirm("ATENÇÃO: Isso vai apagar TODOS os seus dados salvos neste celular. Tem certeza?")) {
                 localStorage.removeItem(STORAGE_KEY);
                 location.reload();
             }
         }
 
         function authenticate() {
-            // .trim() remove espaços em branco (muito comum em teclados de celular que adicionam espaço sozinho)
             const input = document.getElementById('password-input').value.trim();
             if (!input) return;
 
@@ -488,27 +489,32 @@
             });
         }
 
-        // Sistema de PDF Mobile Corrigido
+        // NOVO FLUXO DE PDF PARA MOBILE (SEM BUG VISUAL)
         function openReportModal(type) {
             activeReportType = type;
             const key = getMonthKey(currentMonthDate);
             const monthData = appData[key];
             const items = monthData[type];
 
+            // Reseta botões
+            document.getElementById('pdf-actions').classList.add('hidden');
+            document.getElementById('modal-footer-initial').classList.remove('hidden');
+            const btnGen = document.getElementById('btn-generate-pdf');
+            btnGen.innerHTML = '<i class="fa-solid fa-cogs"></i> Preparar Arquivo PDF';
+            btnGen.disabled = false;
+
             const titleHeading = document.getElementById('report-type-heading');
             const monthHeading = document.getElementById('report-month-heading');
             const tableBody = document.getElementById('report-items-table');
             const totalSumEl = document.getElementById('report-total-sum');
-            const modalTitleIcon = document.getElementById('report-modal-title');
 
             const isIncome = type === 'incomes';
             titleHeading.innerText = isIncome ? 'Recebimentos' : 'Gastos';
-            modalTitleIcon.innerHTML = `<i class="fa-solid ${isIncome ? 'fa-arrow-trend-up text-emerald-400' : 'fa-arrow-trend-down text-rose-400'}"></i> Relatório de ${isIncome ? 'Recebimentos' : 'Gastos'}`;
             monthHeading.innerText = formatMonthDisplay(currentMonthDate);
 
             tableBody.innerHTML = '';
             if (items.length === 0) {
-                tableBody.innerHTML = `<tr><td colspan="2" class="text-center py-6 text-slate-500">Nenhum registro encontrado para este mês.</td></tr>`;
+                tableBody.innerHTML = `<tr><td colspan="2" class="text-center py-6 text-slate-500">Nenhum registro.</td></tr>`;
             } else {
                 items.forEach(item => {
                     const tr = document.createElement('tr');
@@ -532,31 +538,127 @@
             document.getElementById('report-modal').classList.add('hidden');
         }
 
-        function downloadAsPDF() {
-            const content = document.getElementById('report-content-area');
+        function generatePDF() {
+            const btnGen = document.getElementById('btn-generate-pdf');
+            btnGen.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Processando...';
+            btnGen.disabled = true;
+
+            const key = getMonthKey(currentMonthDate);
+            const items = appData[key][activeReportType];
+            const isIncome = activeReportType === 'incomes';
+            const totalSum = items.reduce((acc, curr) => acc + curr.value, 0);
+            const mainColor = isIncome ? '#059669' : '#e11d48'; // emerald vs rose
+
+            // Criação de um Template HTML Oculto 100% Limpo (Remove o bug do iOS/Safari com o Dark Mode)
+            const printDiv = document.createElement('div');
+            printDiv.style.position = 'absolute';
+            printDiv.style.top = '-9999px';
+            printDiv.style.left = '0';
+            printDiv.style.width = '800px';
+            printDiv.style.backgroundColor = '#ffffff';
+            printDiv.style.color = '#000000';
+            printDiv.style.padding = '40px';
+            printDiv.style.fontFamily = 'Arial, sans-serif';
+
+            let tableRows = '';
+            items.forEach(item => {
+                tableRows += `
+                    <tr>
+                        <td style="padding: 12px; border-bottom: 1px solid #e2e8f0;">${item.desc}</td>
+                        <td style="padding: 12px; border-bottom: 1px solid #e2e8f0; text-align: right; color: ${mainColor}; font-weight: bold;">${formatBRL(item.value)}</td>
+                    </tr>
+                `;
+            });
+
+            printDiv.innerHTML = `
+                <div style="border-bottom: 2px solid #cbd5e1; padding-bottom: 10px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: flex-end;">
+                    <div>
+                        <p style="font-size: 12px; color: #64748b; margin: 0; text-transform: uppercase;">Relatório Oficial</p>
+                        <h2 style="margin: 5px 0 0 0; color: #0f172a; font-size: 28px;">${isIncome ? 'Recebimentos' : 'Gastos'}</h2>
+                    </div>
+                    <div style="text-align: right;">
+                        <p style="margin: 0; color: ${mainColor}; font-weight: bold; font-size: 18px;">${formatMonthDisplay(currentMonthDate)}</p>
+                    </div>
+                </div>
+                <table style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr style="background-color: #f8fafc;">
+                            <th style="padding: 12px; text-align: left; border-bottom: 2px solid #cbd5e1; color: #475569;">Descrição</th>
+                            <th style="padding: 12px; text-align: right; border-bottom: 2px solid #cbd5e1; color: #475569;">Valor</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${items.length ? tableRows : '<tr><td colspan="2" style="padding: 20px; text-align: center; color: #64748b;">Nenhum registro.</td></tr>'}
+                    </tbody>
+                </table>
+                <div style="margin-top: 30px; padding: 20px; background-color: #f8fafc; border-radius: 8px; text-align: right; font-size: 18px;">
+                    <strong>Soma Parcial Acumulada:</strong> 
+                    <span style="color: ${mainColor}; font-size: 24px; font-weight: bold; margin-left: 10px;">${formatBRL(totalSum)}</span>
+                </div>
+            `;
+
+            document.body.appendChild(printDiv);
+
+            const opt = {
+                margin:       10,
+                filename:     `Relatorio.pdf`,
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2, useCORS: true, backgroundColor: '#ffffff', logging: false },
+                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+
+            // Gera o PDF como Blob em vez de baixar direto
+            html2pdf().set(opt).from(printDiv).output('blob').then(function(blob) {
+                document.body.removeChild(printDiv); // Limpa o template oculto
+                
+                currentPdfBlob = blob;
+                if (currentPdfUrl) URL.revokeObjectURL(currentPdfUrl);
+                currentPdfUrl = URL.createObjectURL(blob);
+
+                // Alterna os botões
+                document.getElementById('modal-footer-initial').classList.add('hidden');
+                document.getElementById('pdf-actions').classList.remove('hidden');
+
+            }).catch(err => {
+                console.error("Erro no PDF:", err);
+                document.body.removeChild(printDiv);
+                btnGen.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> Erro. Tentar Novamente';
+                btnGen.disabled = false;
+            });
+        }
+
+        function viewPDF() {
+            if (currentPdfUrl) {
+                // Abre o PDF em uma nova aba do navegador para visualização (iOS suporta perfeitamente)
+                window.open(currentPdfUrl, '_blank');
+            }
+        }
+
+        function saveOrSharePDF() {
+            if (!currentPdfBlob) return;
+
             const monthName = formatMonthDisplay(currentMonthDate).replace(' de ', '_');
             const typeLabel = activeReportType === 'incomes' ? 'Recebimentos' : 'Gastos';
             const fileName = `Relatorio_${typeLabel}_${monthName}.pdf`;
 
-            const infoBox = content.querySelector('.no-print-info');
-            if (infoBox) infoBox.style.display = 'none';
-
-            const opt = {
-                margin:       10,
-                filename:     fileName,
-                image:        { type: 'jpeg', quality: 0.98 },
-                html2canvas:  { scale: 2, backgroundColor: '#0f172a', useCORS: true, logging: false },
-                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
-            };
-
-            html2pdf().set(opt).from(content).save().then(() => {
-                if (infoBox) infoBox.style.display = 'flex';
-                alert("PDF gerado com sucesso! Salvo na pasta Downloads.");
-            }).catch(err => {
-                console.error("Erro ao gerar PDF:", err);
-                if (infoBox) infoBox.style.display = 'flex';
-                alert("Ocorreu um erro ao gerar o PDF. Tente novamente.");
-            });
+            // Verifica se o dispositivo (iOS/Android) suporta a janela nativa de compartilhamento/salvamento
+            const file = new File([currentPdfBlob], fileName, { type: 'application/pdf' });
+            
+            if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                // Abre aquela janela debaixo do celular para escolher "Salvar em Arquivos", "WhatsApp", etc.
+                navigator.share({
+                    files: [file],
+                    title: 'Relatório Financeiro',
+                }).catch(err => console.log('Ação cancelada pelo usuário ou erro:', err));
+            } else {
+                // Alternativa para computadores ou navegadores antigos
+                const a = document.createElement('a');
+                a.href = currentPdfUrl;
+                a.download = fileName;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            }
         }
 
         document.getElementById('password-input').addEventListener('keypress', function (e) {
