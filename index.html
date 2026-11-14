@@ -1,181 +1,63 @@
 <!doctype html>
 <html lang="pt-BR">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <meta name="theme-color" content="#0f172a">
-  <title>Controle Financeiro</title>
-  <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="styles.css">
-  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b1220"><title>FinControl</title>
+<link rel="manifest" href="manifest.webmanifest"><link rel="stylesheet" href="styles.css">
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
 </head>
 <body>
-  <div id="loginView" class="screen">
-    <div class="card login-card">
-      <div class="brand">Controle Financeiro</div>
-      <h1>Entrar</h1>
-      <p class="muted">Acesse seu controle de entradas e gastos.</p>
-      <label>Senha
-        <input id="password" type="password" autocomplete="current-password" placeholder="Digite sua senha">
-      </label>
-      <button id="loginBtn" class="primary">Entrar</button>
-      <p id="loginMsg" class="error"></p>
-      <small class="muted">MVP local: os dados ficam armazenados neste dispositivo.</small>
-    </div>
+<div id="login" class="login-shell">
+  <div class="login-art"><div class="logo-mark">F</div><h1>FinControl</h1><p>Gestão financeira simples, segura e profissional.</p><div class="login-stat">Controle suas entradas, gastos e saldo em um só lugar.</div></div>
+  <div class="login-panel"><div class="mobile-logo">FinControl</div><h2>Bem-vindo</h2><p class="muted">Entre para acessar seu painel financeiro.</p>
+    <label>Senha<input id="pass" type="password" placeholder="Digite sua senha"></label><button id="loginBtn" class="btn primary wide">Acessar painel</button><div id="loginError" class="error"></div>
   </div>
+</div>
 
-  <div id="appView" class="hidden">
-    <header class="topbar">
-      <div>
-        <strong>Controle Financeiro</strong>
-        <span id="periodLabel" class="muted"></span>
-      </div>
-      <button id="logoutBtn" class="ghost">Sair</button>
-    </header>
+<div id="app" class="hidden">
+<header class="topbar"><div class="top-left"><button id="menuBtn" class="icon-btn">☰</button><div class="brand"><span class="logo-mark small">F</span><b>FinControl</b></div></div><div class="top-actions"><span class="today" id="today"></span><button id="logout" class="btn ghost">Sair</button></div></header>
+<div class="layout">
+<aside class="sidebar"><nav><button class="nav active" data-page="dashboard">▦ <span>Visão geral</span></button><button class="nav" data-page="income">↗ <span>Entradas</span></button><button class="nav" data-page="expense">↘ <span>Gastos</span></button><button class="nav" data-page="reports">▤ <span>Relatórios</span></button></nav></aside>
+<main class="content">
+<section id="dashboard" class="page">
+<div class="page-title"><div><span class="eyebrow">PAINEL FINANCEIRO</span><h1>Visão geral</h1><p class="muted">Acompanhe sua movimentação financeira.</p></div><button id="newBtn" class="btn primary">＋ Nova movimentação</button></div>
+<div class="cards"><div class="metric income"><span>ENTRADAS</span><strong id="incomeTotal">R$ 0,00</strong><small>Valores recebidos</small></div><div class="metric expense"><span>GASTOS</span><strong id="expenseTotal">R$ 0,00</strong><small>Valores pagos</small></div><div class="metric balance"><span>SALDO ATUAL</span><strong id="balanceTotal">R$ 0,00</strong><small>Entradas − gastos</small></div></div>
+<div class="grid2"><div class="panel"><div class="panel-head"><div><h3>Movimentações recentes</h3><p class="muted">Últimos lançamentos</p></div><button class="link" data-page="reports">Ver relatório</button></div><div id="recent"></div></div>
+<div class="panel"><div class="panel-head"><div><h3>Resumo</h3><p class="muted">Distribuição atual</p></div></div><div class="bar-wrap"><div><span>Entradas</span><b id="barIncome">0%</b></div><div class="bar"><i id="barIncomeFill"></i></div><div><span>Gastos</span><b id="barExpense">0%</b></div><div class="bar"><i id="barExpenseFill"></i></div></div></div></div>
+</section>
 
-    <main class="container">
-      <section class="summary-grid">
-        <div class="summary income"><span>Entradas</span><strong id="totalIncome">R$ 0,00</strong></div>
-        <div class="summary expense"><span>Gastos</span><strong id="totalExpense">R$ 0,00</strong></div>
-        <div class="summary balance"><span>Saldo parcial</span><strong id="balance">R$ 0,00</strong></div>
-      </section>
+<section id="income" class="page hidden"><div class="page-title"><div><span class="eyebrow green">RECEITAS</span><h1>Entradas</h1><p class="muted">Controle separado de todo dinheiro recebido.</p></div><button class="btn income-btn" id="incomeNew">＋ Nova entrada</button></div><div class="panel"><div class="filter"><input id="incomeFilter" type="month"><span id="incomeSum"></span></div><div id="incomeList"></div></div></section>
 
-      <section class="card">
-        <div class="section-head">
-          <h2>Nova movimentação</h2>
-          <div class="tabs">
-            <button class="tab active" data-type="income">Entrada</button>
-            <button class="tab" data-type="expense">Gasto</button>
-          </div>
-        </div>
-        <form id="transactionForm" class="form-grid">
-          <label>Data<input id="date" type="date" required></label>
-          <label>Descrição<input id="description" type="text" maxlength="100" required placeholder="Ex.: Venda / combustível"></label>
-          <label>Categoria<input id="category" type="text" maxlength="50" placeholder="Ex.: Vendas"></label>
-          <label>Valor<input id="amount" type="number" min="0.01" step="0.01" inputmode="decimal" required placeholder="0,00"></label>
-          <button class="primary" type="submit">Adicionar</button>
-        </form>
-      </section>
+<section id="expense" class="page hidden"><div class="page-title"><div><span class="eyebrow red">DESPESAS</span><h1>Gastos</h1><p class="muted">Controle separado de todas as despesas.</p></div><button class="btn expense-btn" id="expenseNew">＋ Novo gasto</button></div><div class="panel"><div class="filter"><input id="expenseFilter" type="month"><span id="expenseSum"></span></div><div id="expenseList"></div></div></section>
 
-      <section class="card">
-        <div class="section-head">
-          <h2>Relatório parcial</h2>
-          <div class="actions">
-            <input id="filterDate" type="date" title="Filtrar por data">
-            <button id="clearFilter" class="ghost">Limpar</button>
-            <button id="pdfBtn" class="primary">Exportar PDF</button>
-          </div>
-        </div>
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>Data</th><th>Tipo</th><th>Descrição</th><th>Categoria</th><th>Valor</th><th></th></tr></thead>
-            <tbody id="transactionList"></tbody>
-          </table>
-        </div>
-        <div id="empty" class="empty hidden">Nenhuma movimentação encontrada.</div>
-      </section>
-    </main>
-  </div>
+<section id="reports" class="page hidden"><div class="page-title"><div><span class="eyebrow">ANÁLISE</span><h1>Relatórios</h1><p class="muted">Consulte e exporte seu relatório financeiro.</p></div><button id="pdf" class="btn primary">⇩ Exportar PDF</button></div><div class="panel"><div class="report-filter"><label>Período<input id="reportMonth" type="month"></label><div class="report-kpi"><span>Entradas</span><b id="rIn">R$ 0,00</b></div><div class="report-kpi"><span>Gastos</span><b id="rOut">R$ 0,00</b></div><div class="report-kpi"><span>Saldo</span><b id="rBal">R$ 0,00</b></div></div><div id="reportList"></div></div></section>
+</main></div>
+</div>
 
+<div id="modal" class="modal hidden"><div class="modal-box"><div class="modal-head"><div><span id="modalEyebrow" class="eyebrow">MOVIMENTAÇÃO</span><h2 id="modalTitle">Nova entrada</h2></div><button id="close" class="icon-btn">×</button></div>
+<form id="form"><input id="type" type="hidden"><label>Data<input id="date" type="date" required></label><label>Descrição<input id="desc" maxlength="100" placeholder="Ex.: Pagamento de cliente" required></label><label>Categoria<select id="cat"><option>Vendas</option><option>Serviços</option><option>Salário</option><option>Alimentação</option><option>Transporte</option><option>Moradia</option><option>Outros</option></select></label><label>Valor (R$)<input id="amount" type="number" min="0.01" step="0.01" required placeholder="0,00"></label><button class="btn primary wide">Salvar lançamento</button></form></div></div>
 <script>
-const KEY = "cf_transactions_v1";
-const PASS_KEY = "cf_password_hash_v1";
-let currentType = "income";
-let filterDate = "";
-
-const $ = id => document.getElementById(id);
-const brl = n => new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"}).format(n);
-const today = () => new Date().toISOString().slice(0,10);
-
-async function sha256(text){
-  const data = new TextEncoder().encode(text);
-  const hash = await crypto.subtle.digest("SHA-256", data);
-  return [...new Uint8Array(hash)].map(b=>b.toString(16).padStart(2,"0")).join("");
-}
-function getTx(){ return JSON.parse(localStorage.getItem(KEY) || "[]"); }
-function saveTx(v){ localStorage.setItem(KEY, JSON.stringify(v)); }
-
-async function setupPassword(){
-  if(localStorage.getItem(PASS_KEY)) return;
-  const p = prompt("Primeiro acesso: crie uma senha para este dispositivo:");
-  if(!p) return;
-  if(p.length < 6){ alert("Use pelo menos 6 caracteres."); return setupPassword(); }
-  localStorage.setItem(PASS_KEY, await sha256(p));
-}
-async function login(){
-  const p = $("password").value;
-  const hash = await sha256(p);
-  if(hash === localStorage.getItem(PASS_KEY)){
-    $("loginView").classList.add("hidden");
-    $("appView").classList.remove("hidden");
-    render();
-  } else $("loginMsg").textContent = "Senha incorreta.";
-}
-function render(){
-  const all = getTx();
-  const filtered = filterDate ? all.filter(x=>x.date===filterDate) : all;
-  const income = filtered.filter(x=>x.type==="income").reduce((s,x)=>s+x.amount,0);
-  const expense = filtered.filter(x=>x.type==="expense").reduce((s,x)=>s+x.amount,0);
-  $("totalIncome").textContent = brl(income);
-  $("totalExpense").textContent = brl(expense);
-  $("balance").textContent = brl(income-expense);
-  $("periodLabel").textContent = filterDate ? `• ${new Date(filterDate+"T12:00:00").toLocaleDateString("pt-BR")}` : "• Todos os lançamentos";
-  const tbody = $("transactionList");
-  tbody.innerHTML = "";
-  [...filtered].sort((a,b)=>b.date.localeCompare(a.date)).forEach(x=>{
-    const tr=document.createElement("tr");
-    tr.innerHTML=`<td>${new Date(x.date+"T12:00:00").toLocaleDateString("pt-BR")}</td>
-      <td><span class="pill ${x.type}">${x.type==="income"?"Entrada":"Gasto"}</span></td>
-      <td>${escapeHtml(x.description)}</td><td>${escapeHtml(x.category||"-")}</td>
-      <td>${brl(x.amount)}</td><td><button class="delete" data-id="${x.id}">Excluir</button></td>`;
-    tbody.appendChild(tr);
-  });
-  $("empty").classList.toggle("hidden", filtered.length!==0);
-}
-function escapeHtml(s){ return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m])); }
-
-$("loginBtn").onclick=login;
-$("password").onkeydown=e=>{if(e.key==="Enter")login()};
-$("logoutBtn").onclick=()=>{ $("appView").classList.add("hidden"); $("loginView").classList.remove("hidden"); $("password").value=""; };
-$("date").value=today();
-
-document.querySelectorAll(".tab").forEach(btn=>btn.onclick=()=>{
-  document.querySelectorAll(".tab").forEach(b=>b.classList.remove("active"));
-  btn.classList.add("active"); currentType=btn.dataset.type;
-});
-$("transactionForm").onsubmit=e=>{
-  e.preventDefault();
-  const amount=Number($("amount").value);
-  if(!amount || amount<=0)return;
-  const tx=getTx();
-  tx.push({id:crypto.randomUUID(),type:currentType,date:$("date").value,description:$("description").value.trim(),category:$("category").value.trim(),amount});
-  saveTx(tx); e.target.reset(); $("date").value=today(); render();
-};
-$("filterDate").onchange=e=>{filterDate=e.target.value;render()};
-$("clearFilter").onclick=()=>{$("filterDate").value="";filterDate="";render()};
-$("transactionList").onclick=e=>{
-  if(!e.target.matches(".delete"))return;
-  saveTx(getTx().filter(x=>x.id!==e.target.dataset.id));render();
-};
-
-$("pdfBtn").onclick=()=>{
-  const all=getTx(), filtered=filterDate?all.filter(x=>x.date===filterDate):all;
-  const income=filtered.filter(x=>x.type==="income").reduce((s,x)=>s+x.amount,0);
-  const expense=filtered.filter(x=>x.type==="expense").reduce((s,x)=>s+x.amount,0);
-  const {jsPDF}=window.jspdf, doc=new jsPDF();
-  doc.setFontSize(18);doc.text("Relatório Financeiro",14,18);
-  doc.setFontSize(11);doc.text(`Período: ${filterDate?new Date(filterDate+"T12:00:00").toLocaleDateString("pt-BR"):"Todos os lançamentos"}`,14,27);
-  doc.text(`Entradas: ${brl(income)}   Gastos: ${brl(expense)}   Saldo: ${brl(income-expense)}`,14,36);
-  let y=48; doc.setFontSize(9);
-  filtered.sort((a,b)=>b.date.localeCompare(a.date)).forEach(x=>{
-    if(y>280){doc.addPage();y=18;}
-    const line=`${new Date(x.date+"T12:00:00").toLocaleDateString("pt-BR")} | ${x.type==="income"?"Entrada":"Gasto"} | ${x.description} | ${brl(x.amount)}`;
-    doc.text(line.slice(0,115),14,y);y+=7;
-  });
-  doc.save("relatorio-financeiro.pdf");
-};
-
-(async()=>{await setupPassword(); $("loginView").classList.remove("hidden");})();
+const KEY="fincontrol_v2", PASS="fincontrol_pass"; let page="dashboard";
+const $=x=>document.getElementById(x), brl=n=>new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"}).format(n), today=()=>new Date().toISOString().slice(0,10);
+const get=()=>JSON.parse(localStorage.getItem(KEY)||"[]"), save=x=>localStorage.setItem(KEY,JSON.stringify(x));
+async function hash(s){let b=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(s));return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join("")}
+async function init(){if(!localStorage.getItem(PASS)){let p=prompt("Crie a senha do FinControl (mínimo 6 caracteres):");if(p&&p.length>=6)localStorage.setItem(PASS,await hash(p))} $("today").textContent=new Date().toLocaleDateString("pt-BR",{weekday:"long",day:"2-digit",month:"long"});}
+$("loginBtn").onclick=async()=>{if(await hash($("pass").value)===localStorage.getItem(PASS)){$("login").classList.add("hidden");$("app").classList.remove("hidden");render()}else $("loginError").textContent="Senha incorreta."};
+$("logout").onclick=()=>{$("app").classList.add("hidden");$("login").classList.remove("hidden");$("pass").value=""};
+function nav(p){page=p;document.querySelectorAll(".page").forEach(x=>x.classList.add("hidden"));$(p).classList.remove("hidden");document.querySelectorAll(".nav").forEach(x=>x.classList.toggle("active",x.dataset.page===p));render()}
+document.querySelectorAll(".nav").forEach(x=>x.onclick=()=>nav(x.dataset.page));document.querySelectorAll("[data-page]").forEach(x=>{if(!x.classList.contains("nav"))x.onclick=()=>nav(x.dataset.page)});
+$("menuBtn").onclick=()=>document.querySelector(".sidebar").classList.toggle("open");
+function openModal(t){$("type").value=t;$("modalTitle").textContent=t==="income"?"Nova entrada":"Novo gasto";$("modalEyebrow").className="eyebrow "+(t==="income"?"green":"red");$("date").value=today();$("desc").value="";$("amount").value="";$("modal").classList.remove("hidden")}
+$("newBtn").onclick=()=>openModal("income");$("incomeNew").onclick=()=>openModal("income");$("expenseNew").onclick=()=>openModal("expense");$("close").onclick=()=>$("modal").classList.add("hidden");$("modal").onclick=e=>{if(e.target.id==="modal")$("modal").classList.add("hidden")};
+$("form").onsubmit=e=>{e.preventDefault();let a=Number($("amount").value);if(a<=0)return;let t=get();t.push({id:crypto.randomUUID(),type:$("type").value,date:$("date").value,desc:$("desc").value.trim(),cat:$("cat").value,amount:a});save(t);$("modal").classList.add("hidden");render()};
+function rows(list, target){$(target).innerHTML=list.length?list.map(x=>`<div class="row"><div class="row-icon ${x.type}">${x.type==="income"?"↗":"↘"}</div><div class="row-main"><b>${esc(x.desc)}</b><small>${new Date(x.date+"T12:00").toLocaleDateString("pt-BR")} · ${esc(x.cat)}</small></div><strong class="${x.type}">${x.type==="income"?"+":"−"} ${brl(x.amount)}</strong><button class="delete" onclick="del('${x.id}')">×</button></div>`).join(""):`<div class="empty">Nenhum lançamento encontrado.</div>`}
+function esc(s){return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]))} function del(id){save(get().filter(x=>x.id!==id));render()}
+function monthFilter(x,m){return m?x.filter(a=>a.date.slice(0,7)===m):x}
+function render(){let t=get(),inc=t.filter(x=>x.type==="income"),out=t.filter(x=>x.type==="expense"),si=inc.reduce((s,x)=>s+x.amount,0),so=out.reduce((s,x)=>s+x.amount,0);$("incomeTotal").textContent=brl(si);$("expenseTotal").textContent=brl(so);$("balanceTotal").textContent=brl(si-so);let total=si+so;$("barIncome").textContent=total?Math.round(si/total*100)+"%":"0%";$("barExpense").textContent=total?Math.round(so/total*100)+"%":"0%";$("barIncomeFill").style.width=(total?si/total*100:0)+"%";$("barExpenseFill").style.width=(total?so/total*100:0)+"%";rows([...t].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,6),"recent");
+let im=monthFilter(inc,$("incomeFilter").value),om=monthFilter(out,$("expenseFilter").value);$("incomeSum").textContent=brl(im.reduce((s,x)=>s+x.amount,0));$("expenseSum").textContent=brl(om.reduce((s,x)=>s+x.amount,0));rows(im.sort((a,b)=>b.date.localeCompare(a.date)),"incomeList");rows(om.sort((a,b)=>b.date.localeCompare(a.date)),"expenseList");
+let rm=monthFilter(t,$("reportMonth").value),ri=rm.filter(x=>x.type==="income").reduce((s,x)=>s+x.amount,0),ro=rm.filter(x=>x.type==="expense").reduce((s,x)=>s+x.amount,0);$("rIn").textContent=brl(ri);$("rOut").textContent=brl(ro);$("rBal").textContent=brl(ri-ro);rows(rm.sort((a,b)=>b.date.localeCompare(a.date)),"reportList")}
+$("incomeFilter").onchange=$("expenseFilter").onchange=$("reportMonth").onchange=render;
+$("pdf").onclick=()=>{let t=monthFilter(get(),$("reportMonth").value),{jsPDF}=window.jspdf,d=new jsPDF();d.setFontSize(20);d.text("FinControl — Relatório Financeiro",14,18);d.setFontSize(10);d.text("Período: "+($("reportMonth").value||"Todos"),14,27);let y=40;d.text(`Entradas: ${brl(t.filter(x=>x.type==="income").reduce((s,x)=>s+x.amount,0))}`,14,y);d.text(`Gastos: ${brl(t.filter(x=>x.type==="expense").reduce((s,x)=>s+x.amount,0))}`,80,y);d.text(`Saldo: ${brl(t.filter(x=>x.type==="income").reduce((s,x)=>s+x.amount,0)-t.filter(x=>x.type==="expense").reduce((s,x)=>s+x.amount,0))}`,140,y);y+=12;t.forEach(x=>{if(y>280){d.addPage();y=18}d.text(`${new Date(x.date+"T12:00").toLocaleDateString("pt-BR")} | ${x.type==="income"?"Entrada":"Gasto"} | ${x.desc} | ${brl(x.amount)}`.slice(0,110),14,y);y+=7});d.save("fincontrol-relatorio.pdf")};
+init();
 </script>
-</body>
-</html>
+</body></html>

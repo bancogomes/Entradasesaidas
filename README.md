@@ -1,18 +1,11 @@
-# Controle Financeiro — MVP
+# FinControl Pro — MVP
+Interface profissional responsiva para gestão de entradas e gastos.
+- Dashboard
+- Entradas e gastos em áreas separadas
+- Saldo, resumo e movimentações recentes
+- Relatórios por mês
+- Exportação PDF
+- Login por senha no dispositivo
+- PWA responsivo para iOS, Android e Windows
 
-App web responsivo/PWA para iOS, Android e Windows.
-
-## Recursos
-- Login por senha no dispositivo.
-- Entradas e gastos separados.
-- Saldo parcial.
-- Filtro por data.
-- Exclusão de lançamentos.
-- Exportação do relatório em PDF.
-- Layout responsivo para celular, tablet e desktop.
-
-## Executar
-Abra `index.html` em um navegador moderno. Para instalar como PWA em produção, publique os arquivos em HTTPS.
-
-## Importante
-Este MVP usa armazenamento local do navegador. A senha não é um sistema de autenticação de servidor. Para uso empresarial/multiusuário, o próximo passo é adicionar backend, banco de dados, recuperação de senha e autenticação segura.
+Este MVP usa armazenamento local. Para produção/multiusuário, adicione backend, banco de dados e autenticação segura.
