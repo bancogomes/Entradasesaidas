@@ -1,657 +1,181 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Controle Financeiro</title>
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        slate: { 850: '#151e2e', 900: '#0f172a' },
-                        emerald: { 500: '#10b981', 600: '#059669' },
-                    }
-                }
-            }
-        }
-    </script>
-    <!-- CryptoJS (Criptografia AES) -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
-    <!-- FontAwesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- jsPDF e AutoTable para geração nativa de PDF -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#0f172a">
+  <title>Controle Financeiro</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
 </head>
-<body class="bg-slate-900 text-slate-100 min-h-screen font-sans">
-
-    <!-- TELA DE LOGIN / SENHA -->
-    <div id="auth-screen" class="flex items-center justify-center min-h-screen">
-        <div class="bg-slate-800 p-8 rounded-xl shadow-2xl w-96 max-w-[90%] text-center border border-slate-700">
-            <h1 class="text-2xl font-bold mb-2 text-emerald-500">
-                <i class="fa-solid fa-vault mr-2"></i>Acesso Seguro
-            </h1>
-            <p id="auth-message" class="text-slate-400 mb-6 text-sm">Insira sua senha para acessar ou criar sua base de dados.</p>
-            
-            <input type="password" id="password-input" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-slate-100 mb-4 focus:outline-none focus:border-emerald-500" placeholder="Sua senha secreta">
-            
-            <button onclick="authenticate()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-lg transition-colors">
-                Entrar
-            </button>
-            <p id="auth-error" class="text-rose-500 text-sm mt-4 hidden">Senha incorreta!</p>
-            
-            <div class="mt-8 pt-4 border-t border-slate-700">
-                <button onclick="resetApp()" class="text-slate-500 hover:text-rose-500 text-xs transition-colors flex items-center justify-center w-full gap-2">
-                    <i class="fa-solid fa-triangle-exclamation"></i> O app travou? Limpar todos os dados
-                </button>
-            </div>
-        </div>
+<body>
+  <div id="loginView" class="screen">
+    <div class="card login-card">
+      <div class="brand">Controle Financeiro</div>
+      <h1>Entrar</h1>
+      <p class="muted">Acesse seu controle de entradas e gastos.</p>
+      <label>Senha
+        <input id="password" type="password" autocomplete="current-password" placeholder="Digite sua senha">
+      </label>
+      <button id="loginBtn" class="primary">Entrar</button>
+      <p id="loginMsg" class="error"></p>
+      <small class="muted">MVP local: os dados ficam armazenados neste dispositivo.</small>
     </div>
+  </div>
 
-    <!-- TELA PRINCIPAL DO APLICATIVO -->
-    <div id="app-screen" class="hidden max-w-6xl mx-auto p-4 md:p-6 pb-20">
-        
-        <!-- Cabeçalho -->
-        <header class="flex justify-between items-center mb-8 bg-slate-800 p-4 rounded-xl border border-slate-700">
-            <h1 class="text-xl md:text-2xl font-bold text-emerald-500">
-                <i class="fa-solid fa-wallet mr-2"></i>Gestão Financeira
-            </h1>
-            <div class="flex items-center gap-4">
-                <button onclick="openChangePasswordModal()" class="text-slate-400 hover:text-emerald-400 transition-colors text-sm" title="Alterar Senha">
-                    <i class="fa-solid fa-key mr-1"></i><span class="hidden md:inline"> Alterar Senha</span>
-                </button>
-                <button onclick="logout()" class="text-slate-400 hover:text-rose-500 transition-colors text-sm">
-                    <i class="fa-solid fa-right-from-bracket mr-1"></i><span class="hidden md:inline"> Sair</span>
-                </button>
-            </div>
-        </header>
+  <div id="appView" class="hidden">
+    <header class="topbar">
+      <div>
+        <strong>Controle Financeiro</strong>
+        <span id="periodLabel" class="muted"></span>
+      </div>
+      <button id="logoutBtn" class="ghost">Sair</button>
+    </header>
 
-        <!-- Navegação de Mês -->
-        <div class="bg-slate-800 rounded-xl p-4 mb-6 border border-slate-700 flex flex-col md:flex-row justify-between items-center gap-4">
-            <div class="flex items-center gap-4">
-                <button onclick="changeMonth(-1)" class="bg-slate-700 hover:bg-slate-600 p-2 rounded-lg transition-colors w-10 h-10 flex items-center justify-center"><i class="fa-solid fa-chevron-left"></i></button>
-                <h2 id="current-month-display" class="text-xl font-bold min-w-[150px] text-center capitalize">Janeiro 2026</h2>
-                <button onclick="changeMonth(1)" class="bg-slate-700 hover:bg-slate-600 p-2 rounded-lg transition-colors w-10 h-10 flex items-center justify-center"><i class="fa-solid fa-chevron-right"></i></button>
-            </div>
-            
-            <div class="flex items-center gap-4">
-                <span id="month-status-badge" class="px-3 py-1 rounded-full text-sm font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">Aberto</span>
-                <button id="close-month-btn" onclick="closeMonth()" class="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg transition-colors text-sm font-semibold">
-                    <i class="fa-solid fa-lock mr-2"></i>Fechar Mês
-                </button>
-            </div>
+    <main class="container">
+      <section class="summary-grid">
+        <div class="summary income"><span>Entradas</span><strong id="totalIncome">R$ 0,00</strong></div>
+        <div class="summary expense"><span>Gastos</span><strong id="totalExpense">R$ 0,00</strong></div>
+        <div class="summary balance"><span>Saldo parcial</span><strong id="balance">R$ 0,00</strong></div>
+      </section>
+
+      <section class="card">
+        <div class="section-head">
+          <h2>Nova movimentação</h2>
+          <div class="tabs">
+            <button class="tab active" data-type="income">Entrada</button>
+            <button class="tab" data-type="expense">Gasto</button>
+          </div>
         </div>
+        <form id="transactionForm" class="form-grid">
+          <label>Data<input id="date" type="date" required></label>
+          <label>Descrição<input id="description" type="text" maxlength="100" required placeholder="Ex.: Venda / combustível"></label>
+          <label>Categoria<input id="category" type="text" maxlength="50" placeholder="Ex.: Vendas"></label>
+          <label>Valor<input id="amount" type="number" min="0.01" step="0.01" inputmode="decimal" required placeholder="0,00"></label>
+          <button class="primary" type="submit">Adicionar</button>
+        </form>
+      </section>
 
-        <!-- Dashboard de Totais -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-            <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 text-center md:text-left">
-                <p class="text-slate-400 text-sm mb-1">Recebimentos</p>
-                <p id="total-incomes" class="text-2xl font-bold text-emerald-400">R$ 0,00</p>
-            </div>
-            <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 text-center md:text-left">
-                <p class="text-slate-400 text-sm mb-1">Gastos</p>
-                <p id="total-expenses" class="text-2xl font-bold text-rose-400">R$ 0,00</p>
-            </div>
-            <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 text-center md:text-left">
-                <p class="text-slate-400 text-sm mb-1">Saldo Atual</p>
-                <p id="total-balance" class="text-2xl font-bold">R$ 0,00</p>
-            </div>
+      <section class="card">
+        <div class="section-head">
+          <h2>Relatório parcial</h2>
+          <div class="actions">
+            <input id="filterDate" type="date" title="Filtrar por data">
+            <button id="clearFilter" class="ghost">Limpar</button>
+            <button id="pdfBtn" class="primary">Exportar PDF</button>
+          </div>
         </div>
-
-        <!-- Módulos de Entrada e Saída -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            
-            <!-- Recebimentos -->
-            <div class="bg-slate-800 rounded-xl p-4 md:p-6 border border-slate-700 flex flex-col justify-between">
-                <div>
-                    <div class="flex justify-between items-center mb-6">
-                        <h3 class="text-lg md:text-xl font-bold text-emerald-500"><i class="fa-solid fa-arrow-trend-up mr-2"></i>Recebimentos</h3>
-                        <button onclick="openReportModal('incomes')" class="bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-500/30 px-3 py-1.5 rounded-lg text-xs md:text-sm font-semibold transition-colors flex items-center gap-2">
-                            <i class="fa-solid fa-file-pdf"></i> <span class="hidden md:inline">Visualizar / Salvar PDF</span><span class="md:hidden">PDF</span>
-                        </button>
-                    </div>
-                    
-                    <form id="form-income" onsubmit="addTransaction(event, 'incomes')" class="flex flex-wrap md:flex-nowrap gap-2 mb-6">
-                        <input type="text" id="income-desc" required placeholder="Descrição" class="flex-1 min-w-[120px] bg-slate-900 border border-slate-700 rounded-lg p-3 md:p-2 text-slate-100 focus:outline-none focus:border-emerald-500">
-                        <input type="number" id="income-val" required step="0.01" min="0.01" placeholder="Valor" class="w-24 md:w-28 bg-slate-900 border border-slate-700 rounded-lg p-3 md:p-2 text-slate-100 focus:outline-none focus:border-emerald-500">
-                        <button type="submit" class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 rounded-lg transition-colors w-full md:w-auto mt-2 md:mt-0 py-3 md:py-0"><i class="fa-solid fa-plus"></i></button>
-                    </form>
-
-                    <ul id="list-incomes" class="space-y-2 mb-4"></ul>
-                </div>
-            </div>
-
-            <!-- Gastos -->
-            <div class="bg-slate-800 rounded-xl p-4 md:p-6 border border-slate-700 flex flex-col justify-between">
-                <div>
-                    <div class="flex justify-between items-center mb-6">
-                        <h3 class="text-lg md:text-xl font-bold text-rose-500"><i class="fa-solid fa-arrow-trend-down mr-2"></i>Gastos</h3>
-                        <button onclick="openReportModal('expenses')" class="bg-rose-600/20 hover:bg-rose-600/30 text-rose-400 border border-rose-500/30 px-3 py-1.5 rounded-lg text-xs md:text-sm font-semibold transition-colors flex items-center gap-2">
-                            <i class="fa-solid fa-file-pdf"></i> <span class="hidden md:inline">Visualizar / Salvar PDF</span><span class="md:hidden">PDF</span>
-                        </button>
-                    </div>
-                    
-                    <form id="form-expense" onsubmit="addTransaction(event, 'expenses')" class="flex flex-wrap md:flex-nowrap gap-2 mb-6">
-                        <input type="text" id="expense-desc" required placeholder="Descrição" class="flex-1 min-w-[120px] bg-slate-900 border border-slate-700 rounded-lg p-3 md:p-2 text-slate-100 focus:outline-none focus:border-rose-500">
-                        <input type="number" id="expense-val" required step="0.01" min="0.01" placeholder="Valor" class="w-24 md:w-28 bg-slate-900 border border-slate-700 rounded-lg p-3 md:p-2 text-slate-100 focus:outline-none focus:border-rose-500">
-                        <button type="submit" class="bg-rose-600 hover:bg-rose-500 text-white px-4 rounded-lg transition-colors w-full md:w-auto mt-2 md:mt-0 py-3 md:py-0"><i class="fa-solid fa-plus"></i></button>
-                    </form>
-
-                    <ul id="list-expenses" class="space-y-2 mb-4"></ul>
-                </div>
-            </div>
-
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Data</th><th>Tipo</th><th>Descrição</th><th>Categoria</th><th>Valor</th><th></th></tr></thead>
+            <tbody id="transactionList"></tbody>
+          </table>
         </div>
-    </div>
-
-    <!-- MODAL DE VISUALIZAÇÃO DE RELATÓRIO PARA PDF -->
-    <div id="report-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-2 md:p-4 overflow-y-auto">
-        <div class="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl flex flex-col max-h-[95vh] md:max-h-[90vh]">
-            <!-- Cabeçalho do Modal -->
-            <div class="bg-slate-800 p-4 px-4 md:px-6 flex justify-between items-center border-b border-slate-700">
-                <h3 id="report-modal-title" class="text-base md:text-lg font-bold text-emerald-400 flex items-center gap-2">
-                    <i class="fa-solid fa-file-invoice"></i> Pré-visualização dos Dados
-                </h3>
-                <button onclick="closeReportModal()" class="text-slate-400 hover:text-white text-2xl w-10 h-10 flex items-center justify-center">
-                    <i class="fa-solid fa-xmark"></i>
-                </button>
-            </div>
-
-            <!-- Corpo da Pré-visualização na tela -->
-            <div class="p-4 md:p-8 overflow-y-auto bg-slate-900 text-slate-100 space-y-6 flex-1">
-                <div class="border-b border-slate-700 pb-4 flex justify-between items-end">
-                    <div>
-                        <p class="text-[10px] md:text-xs uppercase tracking-wider text-slate-400 font-semibold">Resumo do Mês</p>
-                        <h2 id="report-type-heading" class="text-xl md:text-2xl font-extrabold text-white mt-1">Recebimentos</h2>
-                    </div>
-                    <div class="text-right">
-                        <p id="report-month-heading" class="text-emerald-400 font-bold text-sm md:text-lg">Janeiro de 2026</p>
-                    </div>
-                </div>
-
-                <div>
-                    <table class="w-full text-left border-collapse">
-                        <thead>
-                            <tr class="border-b border-slate-700 text-slate-400 text-[10px] md:text-xs uppercase">
-                                <th class="py-2 md:py-3 px-1 md:px-2">Descrição</th>
-                                <th class="py-2 md:py-3 px-1 md:px-2 text-right">Valor</th>
-                            </tr>
-                        </thead>
-                        <tbody id="report-items-table" class="divide-y divide-slate-800 text-xs md:text-sm">
-                            <!-- Injetado via JS -->
-                        </tbody>
-                    </table>
-                </div>
-
-                <div class="pt-4 border-t border-slate-700 flex flex-col md:flex-row justify-between items-center bg-slate-800/40 p-4 rounded-xl gap-2 text-center md:text-left">
-                    <span class="font-bold text-slate-300 text-sm md:text-base">Soma Parcial Acumulada:</span>
-                    <span id="report-total-sum" class="text-lg md:text-xl font-black text-emerald-400">R$ 0,00</span>
-                </div>
-            </div>
-
-            <!-- Rodapé 1: Botão de Preparar PDF -->
-            <div id="modal-footer-initial" class="bg-slate-800 p-4 px-4 md:px-6 border-t border-slate-700 flex justify-end gap-3">
-                <button onclick="closeReportModal()" class="bg-slate-700 hover:bg-slate-600 text-white px-4 py-3 md:py-2 rounded-lg text-sm font-semibold transition-colors flex-1 md:flex-none">
-                    Voltar
-                </button>
-                <button id="btn-generate-pdf" onclick="generateNativePDF()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-3 md:py-2 rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-2 shadow-lg flex-1 md:flex-none">
-                    <i class="fa-solid fa-cogs"></i> Preparar Arquivo PDF
-                </button>
-            </div>
-
-            <!-- Rodapé 2: Botões de Ação Final -->
-            <div id="pdf-actions" class="hidden bg-slate-800 p-4 px-4 md:px-6 border-t border-slate-700 flex flex-col md:flex-row justify-end gap-3">
-                <button onclick="viewPDF()" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-3 md:py-2 rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-2 shadow-lg">
-                    <i class="fa-solid fa-eye"></i> Visualizar PDF
-                </button>
-                <button onclick="saveOrSharePDF()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-3 md:py-2 rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-2 shadow-lg">
-                    <i class="fa-solid fa-share-nodes"></i> Compartilhar / Salvar
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- MODAL DE ALTERAR SENHA -->
-    <div id="password-modal" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-        <div class="bg-slate-800 p-6 rounded-xl shadow-2xl w-96 max-w-[90%] border border-slate-700">
-            <h3 class="text-xl font-bold text-emerald-500 mb-4"><i class="fa-solid fa-key mr-2"></i>Alterar Senha</h3>
-            <div class="space-y-3 mb-6">
-                <div>
-                    <label class="block text-xs text-slate-400 mb-1">Senha Atual</label>
-                    <input type="password" id="current-pass-input" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 md:p-2.5 text-slate-100 focus:outline-none focus:border-emerald-500 text-sm">
-                </div>
-                <div>
-                    <label class="block text-xs text-slate-400 mb-1">Nova Senha</label>
-                    <input type="password" id="new-pass-input" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 md:p-2.5 text-slate-100 focus:outline-none focus:border-emerald-500 text-sm">
-                </div>
-                <div>
-                    <label class="block text-xs text-slate-400 mb-1">Confirmar Nova Senha</label>
-                    <input type="password" id="confirm-pass-input" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 md:p-2.5 text-slate-100 focus:outline-none focus:border-emerald-500 text-sm">
-                </div>
-                <p id="modal-error" class="text-rose-500 text-xs hidden"></p>
-            </div>
-            <div class="flex gap-3">
-                <button onclick="closeChangePasswordModal()" class="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-semibold py-3 md:py-2 rounded-lg transition-colors text-sm">Cancelar</button>
-                <button onclick="confirmChangePassword()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-3 md:py-2 rounded-lg transition-colors text-sm">Salvar</button>
-            </div>
-        </div>
-    </div>
-
-    <script>
-        const STORAGE_KEY = 'bg_finances_data';
-        let userPassword = '';
-        let appData = {};
-        let currentMonthDate = new Date();
-        let activeReportType = 'incomes';
-        let currentPdfBlob = null;
-        let currentPdfUrl = null;
-
-        const formatBRL = (value) => {
-            return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
-        };
-
-        const getMonthKey = (date) => {
-            return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-        };
-        const formatMonthDisplay = (date) => {
-            const formatter = new Intl.DateTimeFormat('pt-BR', { month: 'long', year: 'numeric' });
-            return formatter.format(date);
-        };
-
-        const encryptData = (data) => CryptoJS.AES.encrypt(JSON.stringify(data), userPassword).toString();
-        const decryptData = (ciphertext, password) => {
-            try {
-                const bytes = CryptoJS.AES.decrypt(ciphertext, password);
-                const decryptedString = bytes.toString(CryptoJS.enc.Utf8);
-                if (!decryptedString) return null;
-                return JSON.parse(decryptedString);
-            } catch (e) {
-                return null;
-            }
-        };
-
-        function resetApp() {
-            if (confirm("ATENÇÃO: Isso vai apagar TODOS os seus dados salvos neste celular. Tem certeza?")) {
-                localStorage.removeItem(STORAGE_KEY);
-                location.reload();
-            }
-        }
-
-        function authenticate() {
-            const input = document.getElementById('password-input').value.trim();
-            if (!input) return;
-
-            const storedData = localStorage.getItem(STORAGE_KEY);
-            
-            if (storedData) {
-                const decrypted = decryptData(storedData, input);
-                if (decrypted) {
-                    userPassword = input;
-                    appData = decrypted;
-                    loginSuccess();
-                } else {
-                    document.getElementById('auth-error').classList.remove('hidden');
-                }
-            } else {
-                userPassword = input;
-                appData = {};
-                saveData();
-                loginSuccess();
-            }
-        }
-
-        function loginSuccess() {
-            document.getElementById('auth-screen').classList.add('hidden');
-            document.getElementById('app-screen').classList.remove('hidden');
-            document.getElementById('password-input').value = '';
-            document.getElementById('auth-error').classList.add('hidden');
-            checkAndInitMonth(getMonthKey(currentMonthDate));
-            updateUI();
-        }
-
-        function logout() {
-            userPassword = '';
-            appData = {};
-            document.getElementById('app-screen').classList.add('hidden');
-            document.getElementById('auth-screen').classList.remove('hidden');
-        }
-
-        function saveData() {
-            if (!userPassword) return;
-            localStorage.setItem(STORAGE_KEY, encryptData(appData));
-        }
-
-        function openChangePasswordModal() {
-            document.getElementById('current-pass-input').value = '';
-            document.getElementById('new-pass-input').value = '';
-            document.getElementById('confirm-pass-input').value = '';
-            document.getElementById('modal-error').classList.add('hidden');
-            document.getElementById('password-modal').classList.remove('hidden');
-        }
-
-        function closeChangePasswordModal() {
-            document.getElementById('password-modal').classList.add('hidden');
-        }
-
-        function confirmChangePassword() {
-            const currentPass = document.getElementById('current-pass-input').value.trim();
-            const newPass = document.getElementById('new-pass-input').value.trim();
-            const confirmPass = document.getElementById('confirm-pass-input').value.trim();
-            const errorEl = document.getElementById('modal-error');
-
-            if (currentPass !== userPassword) {
-                errorEl.innerText = "Senha atual incorreta.";
-                errorEl.classList.remove('hidden');
-                return;
-            }
-
-            if (!newPass || newPass.length < 3) {
-                errorEl.innerText = "A nova senha deve ter pelo menos 3 caracteres.";
-                errorEl.classList.remove('hidden');
-                return;
-            }
-
-            if (newPass !== confirmPass) {
-                errorEl.innerText = "As senhas novas não coincidem.";
-                errorEl.classList.remove('hidden');
-                return;
-            }
-
-            userPassword = newPass;
-            saveData();
-            closeChangePasswordModal();
-            alert("Senha alterada com sucesso!");
-        }
-
-        function checkAndInitMonth(monthKey) {
-            if (!appData[monthKey]) {
-                appData[monthKey] = {
-                    status: 'open',
-                    incomes: [],
-                    expenses: []
-                };
-            }
-        }
-
-        function changeMonth(delta) {
-            currentMonthDate.setMonth(currentMonthDate.getMonth() + delta);
-            const key = getMonthKey(currentMonthDate);
-            checkAndInitMonth(key);
-            updateUI();
-        }
-
-        function closeMonth() {
-            if (confirm("Tem certeza que deseja fechar este mês? Você não poderá adicionar ou remover transações após fechar.")) {
-                const key = getMonthKey(currentMonthDate);
-                appData[key].status = 'closed';
-                saveData();
-                changeMonth(1);
-            }
-        }
-
-        function addTransaction(e, type) {
-            e.preventDefault();
-            const key = getMonthKey(currentMonthDate);
-            if (appData[key].status === 'closed') return;
-
-            const prefix = type === 'incomes' ? 'income' : 'expense';
-            const descInput = document.getElementById(`${prefix}-desc`);
-            const valInput = document.getElementById(`${prefix}-val`);
-
-            const transaction = {
-                id: Date.now().toString(),
-                desc: descInput.value,
-                value: parseFloat(valInput.value)
-            };
-
-            appData[key][type].push(transaction);
-            saveData();
-            
-            descInput.value = '';
-            valInput.value = '';
-            updateUI();
-        }
-
-        function removeTransaction(type, id) {
-            const key = getMonthKey(currentMonthDate);
-            if (appData[key].status === 'closed') return;
-
-            appData[key][type] = appData[key][type].filter(t => t.id !== id);
-            saveData();
-            updateUI();
-        }
-
-        function updateUI() {
-            const key = getMonthKey(currentMonthDate);
-            const monthData = appData[key];
-            const isClosed = monthData.status === 'closed';
-
-            document.getElementById('current-month-display').innerText = formatMonthDisplay(currentMonthDate);
-            
-            const badge = document.getElementById('month-status-badge');
-            const closeBtn = document.getElementById('close-month-btn');
-            
-            if (isClosed) {
-                badge.innerText = 'Fechado';
-                badge.className = 'px-3 py-1 rounded-full text-sm font-semibold bg-rose-500/20 text-rose-400 border border-rose-500/30';
-                closeBtn.classList.add('hidden');
-                document.getElementById('form-income').classList.add('hidden');
-                document.getElementById('form-expense').classList.add('hidden');
-            } else {
-                badge.innerText = 'Aberto';
-                badge.className = 'px-3 py-1 rounded-full text-sm font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
-                closeBtn.classList.remove('hidden');
-                document.getElementById('form-income').classList.remove('hidden');
-                document.getElementById('form-expense').classList.remove('hidden');
-            }
-
-            renderList('incomes', monthData.incomes, isClosed);
-            renderList('expenses', monthData.expenses, isClosed);
-
-            const totalInc = monthData.incomes.reduce((acc, curr) => acc + curr.value, 0);
-            const totalExp = monthData.expenses.reduce((acc, curr) => acc + curr.value, 0);
-            const balance = totalInc - totalExp;
-
-            document.getElementById('total-incomes').innerText = formatBRL(totalInc);
-            document.getElementById('total-expenses').innerText = formatBRL(totalExp);
-            
-            const balanceEl = document.getElementById('total-balance');
-            balanceEl.innerText = formatBRL(balance);
-            balanceEl.className = `text-2xl font-bold ${balance >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
-        }
-
-        function renderList(type, items, isClosed) {
-            const listEl = document.getElementById(`list-${type}`);
-            listEl.innerHTML = '';
-            
-            if (items.length === 0) {
-                listEl.innerHTML = '<li class="text-slate-500 text-sm text-center py-4">Nenhum registro.</li>';
-                return;
-            }
-
-            items.forEach(item => {
-                const li = document.createElement('li');
-                li.className = 'flex justify-between items-center bg-slate-900/50 p-3 rounded-lg border border-slate-700/50';
-                
-                const valueColor = type === 'incomes' ? 'text-emerald-400' : 'text-rose-400';
-                
-                li.innerHTML = `
-                    <span class="text-slate-200 text-sm md:text-base truncate max-w-[50%]">${item.desc}</span>
-                    <div class="flex items-center gap-2 md:gap-4">
-                        <span class="font-semibold ${valueColor} text-sm md:text-base">${formatBRL(item.value)}</span>
-                        ${!isClosed ? `<button onclick="removeTransaction('${type}', '${item.id}')" class="text-slate-500 hover:text-rose-500 transition-colors w-8 h-8 flex items-center justify-center"><i class="fa-solid fa-trash"></i></button>` : ''}
-                    </div>
-                `;
-                listEl.appendChild(li);
-            });
-        }
-
-        // PREVIEW NA TELA
-        function openReportModal(type) {
-            activeReportType = type;
-            const key = getMonthKey(currentMonthDate);
-            const monthData = appData[key];
-            const items = monthData[type];
-
-            // Reseta botões
-            document.getElementById('pdf-actions').classList.add('hidden');
-            document.getElementById('modal-footer-initial').classList.remove('hidden');
-
-            const titleHeading = document.getElementById('report-type-heading');
-            const monthHeading = document.getElementById('report-month-heading');
-            const tableBody = document.getElementById('report-items-table');
-            const totalSumEl = document.getElementById('report-total-sum');
-
-            const isIncome = type === 'incomes';
-            titleHeading.innerText = isIncome ? 'Recebimentos' : 'Gastos';
-            monthHeading.innerText = formatMonthDisplay(currentMonthDate);
-
-            tableBody.innerHTML = '';
-            if (items.length === 0) {
-                tableBody.innerHTML = `<tr><td colspan="2" class="text-center py-6 text-slate-500">Nenhum registro.</td></tr>`;
-            } else {
-                items.forEach(item => {
-                    const tr = document.createElement('tr');
-                    tr.className = 'border-b border-slate-800/60';
-                    tr.innerHTML = `
-                        <td class="py-2 md:py-3 px-1 md:px-2 text-slate-200">${item.desc}</td>
-                        <td class="py-2 md:py-3 px-1 md:px-2 text-right font-semibold ${isIncome ? 'text-emerald-400' : 'text-rose-400'}">${formatBRL(item.value)}</td>
-                    `;
-                    tableBody.appendChild(tr);
-                });
-            }
-
-            const totalSum = items.reduce((acc, curr) => acc + curr.value, 0);
-            totalSumEl.innerText = formatBRL(totalSum);
-            totalSumEl.className = `text-lg md:text-xl font-black ${isIncome ? 'text-emerald-400' : 'text-rose-400'}`;
-
-            document.getElementById('report-modal').classList.remove('hidden');
-        }
-
-        function closeReportModal() {
-            document.getElementById('report-modal').classList.add('hidden');
-        }
-
-        // NOVO GERADOR NATIVO (100% livre de bugs visuais)
-        function generateNativePDF() {
-            const btnGen = document.getElementById('btn-generate-pdf');
-            const originalText = btnGen.innerHTML;
-            btnGen.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Processando...';
-            btnGen.disabled = true;
-
-            setTimeout(() => {
-                try {
-                    const { jsPDF } = window.jspdf;
-                    const doc = new jsPDF();
-
-                    const key = getMonthKey(currentMonthDate);
-                    const items = appData[key][activeReportType];
-                    const isIncome = activeReportType === 'incomes';
-                    const totalSum = items.reduce((acc, curr) => acc + curr.value, 0);
-                    
-                    const titleText = isIncome ? 'Recebimentos' : 'Gastos';
-                    const monthText = formatMonthDisplay(currentMonthDate);
-
-                    // Cabeçalho do PDF
-                    doc.setFontSize(22);
-                    doc.setTextColor(15, 23, 42); // slate-900
-                    doc.text(`Relatorio de ${titleText}`, 14, 20);
-                    
-                    doc.setFontSize(12);
-                    doc.setTextColor(100, 116, 139); // slate-500
-                    doc.text(`Referencia: ${monthText.toUpperCase()}`, 14, 28);
-
-                    // Preparando dados da tabela
-                    const tableColumn = ["Descricao da Transacao", "Valor"];
-                    const tableRows = [];
-
-                    items.forEach(item => {
-                        // Limpando caracteres que possam bugar o gerador
-                        const desc = item.desc || "-";
-                        tableRows.push([desc, formatBRL(item.value)]);
-                    });
-
-                    // Cores do tema (Emerald ou Rose)
-                    const headColor = isIncome ? [16, 185, 129] : [225, 29, 72];
-
-                    // Gerando a Tabela Nativamente
-                    doc.autoTable({
-                        startY: 35,
-                        head: [tableColumn],
-                        body: tableRows.length ? tableRows : [["Nenhum registro encontrado.", ""]],
-                        theme: 'striped',
-                        headStyles: { fillColor: headColor, textColor: 255, fontStyle: 'bold' },
-                        styles: { fontSize: 11, cellPadding: 6 },
-                        columnStyles: { 
-                            0: { halign: 'left' },
-                            1: { halign: 'right', fontStyle: 'bold' } 
-                        },
-                        alternateRowStyles: { fillColor: [248, 250, 252] }
-                    });
-
-                    // Total no final da tabela
-                    const finalY = doc.lastAutoTable.finalY || 35;
-                    doc.setFontSize(14);
-                    doc.setTextColor(isIncome ? 5 : 225, isIncome ? 150 : 29, isIncome ? 105 : 72);
-                    doc.text(`Soma Parcial Acumulada: ${formatBRL(totalSum)}`, 14, finalY + 15);
-
-                    // Converte o documento para Blob em memória
-                    currentPdfBlob = doc.output('blob');
-                    if (currentPdfUrl) URL.revokeObjectURL(currentPdfUrl);
-                    currentPdfUrl = URL.createObjectURL(currentPdfBlob);
-
-                    // Alterna a interface mostrando os botões finais
-                    document.getElementById('modal-footer-initial').classList.add('hidden');
-                    document.getElementById('pdf-actions').classList.remove('hidden');
-
-                } catch (error) {
-                    console.error("Erro fatal ao gerar PDF:", error);
-                    alert("Ocorreu um erro ao gerar o PDF. Verifique o console.");
-                } finally {
-                    btnGen.innerHTML = originalText;
-                    btnGen.disabled = false;
-                }
-            }, 300); // Pequeno atraso para a interface não travar
-        }
-
-        function viewPDF() {
-            if (currentPdfUrl) {
-                window.open(currentPdfUrl, '_blank');
-            }
-        }
-
-        function saveOrSharePDF() {
-            if (!currentPdfBlob) return;
-
-            const monthName = formatMonthDisplay(currentMonthDate).replace(' de ', '_');
-            const typeLabel = activeReportType === 'incomes' ? 'Recebimentos' : 'Gastos';
-            const fileName = `Relatorio_${typeLabel}_${monthName}.pdf`;
-
-            // Usa o sistema nativo de compartilhamento do celular se disponível
-            const file = new File([currentPdfBlob], fileName, { type: 'application/pdf' });
-            
-            if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                navigator.share({
-                    files: [file],
-                    title: 'Relatório Financeiro',
-                }).catch(err => console.log('Ação cancelada pelo usuário ou erro:', err));
-            } else {
-                // Alternativa padrão se o celular não suportar a janela nativa
-                const a = document.createElement('a');
-                a.href = currentPdfUrl;
-                a.download = fileName;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-            }
-        }
-
-        document.getElementById('password-input').addEventListener('keypress', function (e) {
-            if (e.key === 'Enter') authenticate();
-        });
-    </script>
+        <div id="empty" class="empty hidden">Nenhuma movimentação encontrada.</div>
+      </section>
+    </main>
+  </div>
+
+<script>
+const KEY = "cf_transactions_v1";
+const PASS_KEY = "cf_password_hash_v1";
+let currentType = "income";
+let filterDate = "";
+
+const $ = id => document.getElementById(id);
+const brl = n => new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"}).format(n);
+const today = () => new Date().toISOString().slice(0,10);
+
+async function sha256(text){
+  const data = new TextEncoder().encode(text);
+  const hash = await crypto.subtle.digest("SHA-256", data);
+  return [...new Uint8Array(hash)].map(b=>b.toString(16).padStart(2,"0")).join("");
+}
+function getTx(){ return JSON.parse(localStorage.getItem(KEY) || "[]"); }
+function saveTx(v){ localStorage.setItem(KEY, JSON.stringify(v)); }
+
+async function setupPassword(){
+  if(localStorage.getItem(PASS_KEY)) return;
+  const p = prompt("Primeiro acesso: crie uma senha para este dispositivo:");
+  if(!p) return;
+  if(p.length < 6){ alert("Use pelo menos 6 caracteres."); return setupPassword(); }
+  localStorage.setItem(PASS_KEY, await sha256(p));
+}
+async function login(){
+  const p = $("password").value;
+  const hash = await sha256(p);
+  if(hash === localStorage.getItem(PASS_KEY)){
+    $("loginView").classList.add("hidden");
+    $("appView").classList.remove("hidden");
+    render();
+  } else $("loginMsg").textContent = "Senha incorreta.";
+}
+function render(){
+  const all = getTx();
+  const filtered = filterDate ? all.filter(x=>x.date===filterDate) : all;
+  const income = filtered.filter(x=>x.type==="income").reduce((s,x)=>s+x.amount,0);
+  const expense = filtered.filter(x=>x.type==="expense").reduce((s,x)=>s+x.amount,0);
+  $("totalIncome").textContent = brl(income);
+  $("totalExpense").textContent = brl(expense);
+  $("balance").textContent = brl(income-expense);
+  $("periodLabel").textContent = filterDate ? `• ${new Date(filterDate+"T12:00:00").toLocaleDateString("pt-BR")}` : "• Todos os lançamentos";
+  const tbody = $("transactionList");
+  tbody.innerHTML = "";
+  [...filtered].sort((a,b)=>b.date.localeCompare(a.date)).forEach(x=>{
+    const tr=document.createElement("tr");
+    tr.innerHTML=`<td>${new Date(x.date+"T12:00:00").toLocaleDateString("pt-BR")}</td>
+      <td><span class="pill ${x.type}">${x.type==="income"?"Entrada":"Gasto"}</span></td>
+      <td>${escapeHtml(x.description)}</td><td>${escapeHtml(x.category||"-")}</td>
+      <td>${brl(x.amount)}</td><td><button class="delete" data-id="${x.id}">Excluir</button></td>`;
+    tbody.appendChild(tr);
+  });
+  $("empty").classList.toggle("hidden", filtered.length!==0);
+}
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m])); }
+
+$("loginBtn").onclick=login;
+$("password").onkeydown=e=>{if(e.key==="Enter")login()};
+$("logoutBtn").onclick=()=>{ $("appView").classList.add("hidden"); $("loginView").classList.remove("hidden"); $("password").value=""; };
+$("date").value=today();
+
+document.querySelectorAll(".tab").forEach(btn=>btn.onclick=()=>{
+  document.querySelectorAll(".tab").forEach(b=>b.classList.remove("active"));
+  btn.classList.add("active"); currentType=btn.dataset.type;
+});
+$("transactionForm").onsubmit=e=>{
+  e.preventDefault();
+  const amount=Number($("amount").value);
+  if(!amount || amount<=0)return;
+  const tx=getTx();
+  tx.push({id:crypto.randomUUID(),type:currentType,date:$("date").value,description:$("description").value.trim(),category:$("category").value.trim(),amount});
+  saveTx(tx); e.target.reset(); $("date").value=today(); render();
+};
+$("filterDate").onchange=e=>{filterDate=e.target.value;render()};
+$("clearFilter").onclick=()=>{$("filterDate").value="";filterDate="";render()};
+$("transactionList").onclick=e=>{
+  if(!e.target.matches(".delete"))return;
+  saveTx(getTx().filter(x=>x.id!==e.target.dataset.id));render();
+};
+
+$("pdfBtn").onclick=()=>{
+  const all=getTx(), filtered=filterDate?all.filter(x=>x.date===filterDate):all;
+  const income=filtered.filter(x=>x.type==="income").reduce((s,x)=>s+x.amount,0);
+  const expense=filtered.filter(x=>x.type==="expense").reduce((s,x)=>s+x.amount,0);
+  const {jsPDF}=window.jspdf, doc=new jsPDF();
+  doc.setFontSize(18);doc.text("Relatório Financeiro",14,18);
+  doc.setFontSize(11);doc.text(`Período: ${filterDate?new Date(filterDate+"T12:00:00").toLocaleDateString("pt-BR"):"Todos os lançamentos"}`,14,27);
+  doc.text(`Entradas: ${brl(income)}   Gastos: ${brl(expense)}   Saldo: ${brl(income-expense)}`,14,36);
+  let y=48; doc.setFontSize(9);
+  filtered.sort((a,b)=>b.date.localeCompare(a.date)).forEach(x=>{
+    if(y>280){doc.addPage();y=18;}
+    const line=`${new Date(x.date+"T12:00:00").toLocaleDateString("pt-BR")} | ${x.type==="income"?"Entrada":"Gasto"} | ${x.description} | ${brl(x.amount)}`;
+    doc.text(line.slice(0,115),14,y);y+=7;
+  });
+  doc.save("relatorio-financeiro.pdf");
+};
+
+(async()=>{await setupPassword(); $("loginView").classList.remove("hidden");})();
+</script>
 </body>
 </html>
